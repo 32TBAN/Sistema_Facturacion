@@ -1,25 +1,44 @@
-import {Router} from 'express'
-import product from '../models/Product'
+import { Router } from "express";
+import Product from "../models/Product";
+import Category from "../models/Categories";
 
-const router = Router()
+const router = Router();
 
-router.get("/",(req,res)=>{
-    res.send("backend")
-})
+router.get("/", (req, res) => {
+  res.send("backend");
+});
 
-router.get("/product/add",async (req,res)=>{
-            product.create(
-            {
-                productID:  '01',
-                name: 'Teclado',
-                categoryID: 1,
-                quantityPerUnit: '1x',
-                unitPrice: 29.99,
-                unitStock: 100,
-            }
-        )
-    
-    res.send("saved")
-})
+router.get("/product/add", async (req, res) => {
+  res.send("saved");
+});
 
-export default router
+router.get("/category/add", async (req, res) => {
+/*   Category.create({
+    productID: 1,
+    name: "Tecnologia",
+    description: "Categoria de tecnologia",
+  }); */
+  res.send("saved");
+});
+
+router.get("/product", async (req, res) => {
+  const product = await Product.find();
+  res.json(product);
+});
+
+router.get("/categories", async (req, res) => {
+    const categories = await Category.find();
+    res.json(categories);
+  });
+
+router.get("/product/delete", async (req, res) => {
+  const product = await Product.find();
+  res.json(product);
+});
+
+router.put("/product/update", async (req, res) => {
+  const product = await Product.find();
+  res.json(product);
+});
+
+export default router;
