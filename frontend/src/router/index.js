@@ -1,19 +1,24 @@
 import { createRouter, createWebHistory } from "vue-router";
-import ProductList from '../components/ProductList.vue'
-import ProductsSearch from '../components/ProductsSearch.vue'
+
+const routes = [
+  {
+    path: "/",
+    name: "inicio",
+    component: () => import("../components/ProductList.vue"),
+  },  {
+    path: "/productsSearch",
+    name: "productsSearch",
+    component: () => import("../components/ProductsSearch.vue"),
+  },{
+    path: "/clientsSearch",
+    name: "clientsSearch",
+    component: () => import("../components/ClienetsList.vue"),
+  },
+];
 
 const router = createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL),
-    routes: [
-    {
-        path: "/productList",
-        component: ProductList,
-    },
-    {
-        path: "/productsSearch",
-        component: ProductsSearch,
-    },
-],
+  history: createWebHistory(process.env.BASE_URL),
+  routes,
 });
 
-export default router
+export default router;

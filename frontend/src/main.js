@@ -1,11 +1,13 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import VueRouter from 'vue-router' 
 import router from './router/index'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-const app = createApp(App)
+library.add(faChevronDown, faChevronUp)
 
-app.use(VueRouter) 
+const app = createApp(App).component('font-awesome-icon', FontAwesomeIcon)
 
 app.use(router) 
 

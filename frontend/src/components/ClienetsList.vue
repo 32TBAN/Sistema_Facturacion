@@ -1,13 +1,13 @@
 <template>
   <div class="bg-transparent">
-    <h4 class="pb-1">Busqueda de productos</h4>
+    <h4 class="pb-1">Busqueda de clientes</h4>
 
     <div class="container d-flex flex-column align-items-center">
       <form class="d-flex me-2 mb-3">
         <input
           class="form-control"
           type="search"
-          placeholder="Ingrese el producto"
+          placeholder="Ingrese el id"
           aria-label="Search"
         />
       </form>
@@ -21,7 +21,7 @@
           />
         </p>
         <div v-if="showTags" class="tags-container">
-          <div v-for="tag in allTags" :key="tag" >
+          <div v-for="tag in allTags" :key="tag">
             <input
               type="checkbox"
               :id="tag"
