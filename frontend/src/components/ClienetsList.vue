@@ -114,48 +114,45 @@ export default {
   },
   methods: {
     searchByTags() {
-      // Filtra productos por etiquetas seleccionadas
-      let filteredByTags = this.originalProducts.filter((product) => {
-        return this.searchTags.some((tagID) => product.categoryID === tagID);
-      });
+      // Filtrar productos por etiquetas seleccionadas
+      let filteredCustomers = [...this.originalCustomers];
 
-      if (this.nameSearch) {
-        if (filteredByTags.length == 0) {
-          this.products = this.products.filter((product) => {
-            // Comprueba si el nombre del producto incluye el nombre de búsqueda
-            const nameMatches = product.name
-              .toLowerCase()
-              .includes(this.nameSearch.toLowerCase());
-            // Comprueba si el nombre del producto comienza con la letra de búsqueda
-            const startsWithLetter = product.name
-              .toLowerCase()
-              .startsWith(this.nameSearch.toLowerCase());
-
-            return nameMatches || startsWithLetter;
-          });
-        } else {
-          this.products = filteredByTags.filter((product) => {
-            // Comprueba si el nombre del producto incluye el nombre de búsqueda
-            const nameMatches = product.name
-              .toLowerCase()
-              .includes(this.nameSearch.toLowerCase());
-            // Comprueba si el nombre del producto comienza con la letra de búsqueda
-            const startsWithLetter = product.name
-              .toLowerCase()
-              .startsWith(this.nameSearch.toLowerCase());
-
-            return nameMatches || startsWithLetter;
-          });
-        }
-      } else {
-        this.products = [...filteredByTags];
+      if (this.searchTags.length > 0) {
+        // Filtra por etiquetas seleccionadas
+        filteredCustomers = this.customers.filter((customer) => {
+          return this.searchTags.includes("id")
+            ? customer._id.includes(this.nameSearch)
+            : false || this.searchTags.includes("nombre")
+            ? customer.name
+                .toLowerCase()
+                .includes(this.nameSearch.toLowerCase())
+            : false || this.searchTags.includes("email")
+            ? customer.email
+                .toLowerCase()
+                .includes(this.nameSearch.toLowerCase())
+            : false || this.searchTags.includes("pais")
+            ? customer.country
+                .toLowerCase()
+                .includes(this.nameSearch.toLowerCase())
+            : false;
+        });
       }
 
-      if (this.products.length == 0) {
-        this.products = [...this.originalProducts];
+      // Si no se han seleccionado etiquetas, realiza la búsqueda por nombre de forma predeterminada
+      if (this.nameSearch && this.searchTags.length === 0) {
+        filteredCustomers = this.originalCustomers.filter((customer) => {
+          return customer.name
+            .toLowerCase()
+            .includes(this.nameSearch.toLowerCase());
+        });
       }
 
-      this.products.sort((a, b) => b.unitStock - a.unitStock);
+      this.customers = filteredCustomers;
+
+      if (this.customers.length === 0) {
+        // Si no se encuentran resultados, restaura la lista original
+        this.customers = [...this.originalCustomers];
+      }
     },
     toggleArrowIcon() {
       this.showTags = !this.showTags;
