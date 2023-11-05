@@ -64,7 +64,7 @@
             <div class="d-flex align-items-center">
               <input
                 class="mb-2 form-control"
-                v-model="quantityToAdd"
+                v-model="quantityToAdd[product.productID]"
                 type="number"
                 placeholder="cantidad"
                 min="0"
@@ -126,10 +126,10 @@ export default {
       page: 1,
       perPage: 10,
       pages: [],
-      quantityBuy: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
       nameSearch: "",
       searchTags: [],
       originalProducts: [],
+      quantityToAdd: {},
     };
   },
   created() {
@@ -179,6 +179,8 @@ export default {
       if (this.products.length == 0) {
         this.products = [...this.originalProducts];
       }
+
+      this.products.sort((a, b) => b.unitStock - a.unitStock);
     },
     toggleArrowIcon() {
       this.showTags = !this.showTags;
@@ -189,6 +191,7 @@ export default {
       this.products = res.data;
       // Copia la lista original al cargar
       this.originalProducts = [...this.products];
+      this.products.sort((a, b) => b.unitStock - a.unitStock);
     },
     async getCategories() {
       const res = await this.axios.get(`${this.baseUrl}/categories`);
@@ -219,20 +222,20 @@ export default {
     async addToCart(product, quantityToAdd) {
       try {
         // Verifica que la cantidad a agregar sea un número válido
-        const quantity = parseInt(quantityToAdd);
+        const quantity = parseInt(quantityToAdd[product.productID]);
 
         if (isNaN(quantity) || quantity <= 0) {
           alert("Ingresa una cantidad válida para agregar al carrito.");
           return;
         }
 
-        if (product.unitStock == 0 ) {
+        if (product.unitStock == 0 || product.unitStock < quantity) {
           alert("Bajo stock");
           return;
         }
 
         product.unitStock -= quantity;
-        // Realiza una solicitud PUT al servidor para actualizar el producto
+        // actualizar el productos en stock
         const updateQuantity = await this.axios.put(
           `${this.baseUrl}/productUpdate/${product.productID}`,
           product
@@ -244,13 +247,14 @@ export default {
           console.error("Error al actualizar el producto");
         }
 
+        //busca la orden segun el usuario
         let order = (
           await this.axios.get(
             `${this.baseUrl}/orderSearchBycustomerID/${"01"}`
           )
         ).data;
         let openOrder = order == null ? false : true;
-
+        //si la orden no esta abierta o es la primera la crea
         if (!openOrder) {
           order = {
             orderID: 1,
@@ -267,26 +271,49 @@ export default {
           }
         }
 
-        let addOrderDetails = {
-          orderID: order.orderID,
-          productID: product.productID,
-          unitPrice: product.unitPrice,
-          quantity: quantityToAdd,
-        };
+        //nuevo produco add a detalles
+        let existDetails = (
+          await this.axios.get(
+            `${this.baseUrl}/searchProductDetail/${order.orderID}/${product.productID}`
+          )
+        ).data;
 
-        const addDetails = await this.axios.post(
-          `${this.baseUrl}/orderDetails`,
-          addOrderDetails
-        );
+        if (existDetails == null) {
+          existDetails = 
+            {
+              orderID: order.orderID,
+              productID: product.productID,
+              unitPrice: product.unitPrice,
+              quantity: quantityToAdd[product.productID],
+            }
+          
 
-        if (addDetails.status === 200) {
-          console.log("Detalle agregado");
+          const addDetails = await this.axios.post(
+            `${this.baseUrl}/orderDetails`,
+            existDetails
+          );
+
+          if (addDetails.status === 200) {
+            console.log("Detalle agregado");
+          } else {
+            console.error("Error al detalle");
+          }
         } else {
-          console.error("Error al detalle");
+          existDetails.quantity += quantityToAdd[product.productID];
+          await this.axios.put(
+            `${this.baseUrl}/detailsUpdate/${product.productID}/${order.orderID}`,
+            existDetails
+          );
         }
 
-        alert(`Producto a agregar al carrito: ${product.name}`);
-        alert(`Cantidad a agregar: ${quantity}`);
+        // Utiliza product.productID como clave para rastrear la cantidad específica del producto
+        if (!this.quantityToAdd[product.productID]) {
+          this.quantityToAdd[product.productID] = 0;
+        }
+        this.quantityToAdd[product.productID] += quantity;
+
+        alert(`Producto a agregar al carrito: ${product.name}\n
+        Cantidad a agregar: ${quantity}`);
       } catch (error) {
         console.error("Error al agregar al carrito:", error);
       }

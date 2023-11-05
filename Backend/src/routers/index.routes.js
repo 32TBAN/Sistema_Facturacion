@@ -4,6 +4,8 @@ import Category from "../models/Categories";
 import Order from "../models/Order";
 import Customer from "../models/Customer";
 import OrderDetails from "../models/OrderDetails";
+const Chance = require('chance');
+const chance = new Chance();
 
 const router = Router();
 
@@ -26,12 +28,16 @@ router.get("/category/add", async (req, res) => {
 });
 
 router.get("/customer/add", async (req, res) => {
-  Customer.create({
-    _id: "01",
-    name: "Admin",
-    email: "Admin",
-    country: "Ecuador",
-  });
+
+  for (let index = 0; index < 100; index++) {
+    Customer.create({
+      _id: ""+index,
+      name: chance.name(), // Genera un nombre aleatorio
+      email: chance.email(), // Genera una dirección de correo electrónico aleatoria
+      country: chance.country(), // Genera un país aleatorio
+    });
+  }
+
   res.send("saved");
 });
 
@@ -64,6 +70,10 @@ router.get("/categories", async (req, res) => {
   res.json(categories);
 });
 
+router.get("/customers", async (req, res) => {
+  const customer = await Customer.find();
+  res.json(customer);
+});
 /* actualizar */
 router.put("/productUpdate/:productID", async (req, res) => {
   try {
@@ -167,6 +177,32 @@ router.get("/product/:productID", async (req, res) => {
     res.json(error);
   }
 });
+
+router.get("/searchProductDetail/:orderID/:productID", async (req, res) => {
+  try {
+    const orderID = req.params.orderID;
+    const productID = req.params.productID;
+
+    const filter = {
+      orderID: orderID,
+      productID: productID,
+    };
+
+
+    const resNew = await OrderDetails.findOne(
+      filter
+    );
+
+    if (!resNew) {
+      return res.json(null);
+    }
+
+    res.json(resNew);
+  } catch (error) {
+    console.log(error);
+  }
+});
+
 /* 
 eliminar */
 router.delete("/orderDetailsDelete/:productID", async (req, res) => {
