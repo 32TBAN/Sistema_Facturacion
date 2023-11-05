@@ -226,18 +226,65 @@ export default {
           return;
         }
 
+        if (product.unitStock == 0 ) {
+          alert("Bajo stock");
+          return;
+        }
+
         product.unitStock -= quantity;
         // Realiza una solicitud PUT al servidor para actualizar el producto
-        const response = await this.axios.put(
+        const updateQuantity = await this.axios.put(
           `${this.baseUrl}/productUpdate/${product.productID}`,
           product
         );
 
-        if (response.status === 200) {
-          console.log("Producto actualizado con éxito");
+        if (updateQuantity.status === 200) {
+          console.log("Cantidad actualizada");
         } else {
           console.error("Error al actualizar el producto");
         }
+
+        let order = (
+          await this.axios.get(
+            `${this.baseUrl}/orderSearchBycustomerID/${"01"}`
+          )
+        ).data;
+        let openOrder = order == null ? false : true;
+
+        if (!openOrder) {
+          order = {
+            orderID: 1,
+            customerID: "01",
+          };
+          const openOrder = await this.axios.post(
+            `${this.baseUrl}/openOrder`,
+            order
+          );
+          if (openOrder.status === 200) {
+            console.log("Orden abierta");
+          } else {
+            console.error("No se ha podido abrir la orden");
+          }
+        }
+
+        let addOrderDetails = {
+          orderID: order.orderID,
+          productID: product.productID,
+          unitPrice: product.unitPrice,
+          quantity: quantityToAdd,
+        };
+
+        const addDetails = await this.axios.post(
+          `${this.baseUrl}/orderDetails`,
+          addOrderDetails
+        );
+
+        if (addDetails.status === 200) {
+          console.log("Detalle agregado");
+        } else {
+          console.error("Error al detalle");
+        }
+
         alert(`Producto a agregar al carrito: ${product.name}`);
         alert(`Cantidad a agregar: ${quantity}`);
       } catch (error) {
