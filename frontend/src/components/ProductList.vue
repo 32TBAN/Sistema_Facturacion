@@ -1,5 +1,13 @@
 <template>
   <div class="container mt-5 bg-white p-3">
+    <transition name="fade">
+      <pop-up
+        :total="total"
+        v-show="popup"
+        @close="toglePopUP()"
+        @comprar="limpiar()"
+      />
+    </transition>
     <h1 class="pb-3">Tu carrito</h1>
     <div class="row table-header pb-3">
       <div class="col-3">Nombre</div>
@@ -57,25 +65,54 @@
         <p class="text-primary">Total</p>
         <p>{{ "$ " + total.toFixed(2) }}</p>
       </div>
-      <button class="btn btn-primary">Comprar</button>
+      <button class="btn btn-primary" @click="toglePopUP()">Comprar</button>
     </div>
   </div>
 </template>
 
 <script>
+import PopUp from "./PopUp.vue";
+
 export default {
+  components: {
+    PopUp,
+  },
   data() {
     return {
       products: [],
       baseUrl: "http://localhost:3000",
       total: 0,
       order: [],
+      popup: false,
     };
   },
   created() {
     this.getProducts();
   },
   methods: {
+    async limpiar() {
+      let eliminados = [];
+      let numberDeletes = this.products.length;
+
+      for (let index = 0; index < numberDeletes; index++) {
+        eliminados.push(
+          (
+            await this.axios.delete(
+              `${this.baseUrl}/orderDetailsDelete/${this.products[index].productID}`
+            )
+          ).data
+        );
+
+        if (eliminados.length == numberDeletes) {
+          this.products = [];
+          this.popup = false;
+          this.total = 0;
+        }
+      }
+    },
+    toglePopUP() {
+      this.popup = !this.popup;
+    },
     async getProducts() {
       this.order = (
         await this.axios.get(`${this.baseUrl}/orderSearchBycustomerID/${"01"}`)
@@ -100,8 +137,7 @@ export default {
           unitPrice: "$ " + producto[0].unitPrice,
         });
 
-
-        this.total += (producto[0].unitPrice * details[index].quantity);
+        this.total += producto[0].unitPrice * details[index].quantity;
       }
     },
     editProduct(product) {
@@ -170,10 +206,8 @@ export default {
         `${this.baseUrl}/orderDetailsDelete/${product.productID}`
       );
 
-      
-      this.products = []
+      this.products = [];
       await this.getProducts();
-      
     },
   },
 };
