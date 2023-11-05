@@ -13,7 +13,7 @@ router.get("/product/add", async (req, res) => {
 });
 
 router.get("/category/add", async (req, res) => {
-/*   Category.create({
+  /*   Category.create({
     productID: 1,
     name: "Tecnologia",
     description: "Categoria de tecnologia",
@@ -27,18 +27,33 @@ router.get("/product", async (req, res) => {
 });
 
 router.get("/categories", async (req, res) => {
-    const categories = await Category.find();
-    res.json(categories);
-  });
+  const categories = await Category.find();
+  res.json(categories);
+});
 
 router.get("/product/delete", async (req, res) => {
   const product = await Product.find();
   res.json(product);
 });
 
-router.put("/product/update", async (req, res) => {
-  const product = await Product.find();
-  res.json(product);
+router.put("/productUpdate/:productID", async (req, res) => {
+  try {
+    const productNew = req.body;
+    const productID = req.params.productID;
+
+    const filter = { productID: productID };
+    const options = { new: true };
+
+    const resNew = await Product.findOneAndUpdate(filter, productNew, options);
+
+    if (!resNew) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    res.json('Producto actualizado');
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 export default router;

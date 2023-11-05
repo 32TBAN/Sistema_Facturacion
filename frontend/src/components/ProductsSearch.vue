@@ -9,6 +9,8 @@
           type="search"
           placeholder="Ingrese el producto"
           aria-label="Search"
+          v-model="nameSearch"
+          @input="searchByTags"
         />
       </form>
 
@@ -23,22 +25,22 @@
           />
         </p>
 
-        <div v-if="showTags" class="tags-container" >
+        <div v-if="showTags" class="tags-container">
           <!-- Contenido de etiquetas -->
-          <div v-for="tag in allTags" :key="tag">
+          <div v-for="tag in allTags" :key="tag.productID">
             <input
               type="checkbox"
-              :id="tag"
-              :value="tag"
+              :id="tag.productID"
+              :value="tag.productID"
               v-model="searchTags"
               @change="searchByTags"
             />
-            <label class="p-2" :for="tag">{{ tag.name }}</label>
+            <label class="p-2" :for="tag.productID">{{ tag.name }}</label>
           </div>
         </div>
       </div>
     </div>
-    <div class="container mt-5 bg-white p-3">
+    <div class="container mt-1 bg-white p-3">
       <div class="row table-header pb-3">
         <div class="col-2">Nombre</div>
         <div class="col-2">Cantidad x Unidad</div>
@@ -58,7 +60,7 @@
         <div class="col-2">{{ product.unitPrice }}</div>
         <div class="col-2">{{ product.unitStock }}</div>
         <div class="col-2 mb-2">
-          <form @submit="addToCart(product, quantityToAdd)">
+          <form>
             <div class="d-flex align-items-center">
               <input
                 class="mb-2 form-control"
@@ -70,7 +72,11 @@
                 required
               />
             </div>
-            <button type="submit" class="btn btn-outline-success me-2">
+            <button
+              type="button"
+              class="btn btn-outline-success me-2"
+              @click="addToCart(product, quantityToAdd)"
+            >
               Agregar
             </button>
           </form>
@@ -88,7 +94,7 @@
         </button>
         <button
           type="button"
-          v-for="pageNumber in pages.slice(page - 1, page + 5)"
+          v-for="pageNumber in pages.slice(page - 1, page + 2)"
           v-bind:key="pageNumber"
           class="btn btn-sm btn-outline-secondary"
           @click="page = pageNumber"
@@ -121,18 +127,58 @@ export default {
       perPage: 10,
       pages: [],
       quantityBuy: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      nameSearch: "",
+      searchTags: [],
+      originalProducts: [],
     };
   },
   created() {
     this.getProducts();
     this.getCategories();
-    window.addEventListener('click', this.handleClickOutside);
+    window.addEventListener("click", this.handleClickOutside);
   },
   methods: {
     searchByTags() {
-      this.searchResults = this.products.filter((product) => {
-        return this.searchTags.every((tag) => product.tags.includes(tag));
+      // Filtra productos por etiquetas seleccionadas
+      let filteredByTags = this.originalProducts.filter((product) => {
+        return this.searchTags.some((tagID) => product.categoryID === tagID);
       });
+
+      if (this.nameSearch) {
+        if (filteredByTags.length == 0) {
+          this.products = this.products.filter((product) => {
+            // Comprueba si el nombre del producto incluye el nombre de búsqueda
+            const nameMatches = product.name
+              .toLowerCase()
+              .includes(this.nameSearch.toLowerCase());
+            // Comprueba si el nombre del producto comienza con la letra de búsqueda
+            const startsWithLetter = product.name
+              .toLowerCase()
+              .startsWith(this.nameSearch.toLowerCase());
+
+            return nameMatches || startsWithLetter;
+          });
+        } else {
+          this.products = filteredByTags.filter((product) => {
+            // Comprueba si el nombre del producto incluye el nombre de búsqueda
+            const nameMatches = product.name
+              .toLowerCase()
+              .includes(this.nameSearch.toLowerCase());
+            // Comprueba si el nombre del producto comienza con la letra de búsqueda
+            const startsWithLetter = product.name
+              .toLowerCase()
+              .startsWith(this.nameSearch.toLowerCase());
+
+            return nameMatches || startsWithLetter;
+          });
+        }
+      } else {
+        this.products = [...filteredByTags];
+      }
+
+      if (this.products.length == 0) {
+        this.products = [...this.originalProducts];
+      }
     },
     toggleArrowIcon() {
       this.showTags = !this.showTags;
@@ -141,11 +187,12 @@ export default {
     async getProducts() {
       const res = await this.axios.get(`${this.baseUrl}/product`);
       this.products = res.data;
+      // Copia la lista original al cargar
+      this.originalProducts = [...this.products];
     },
     async getCategories() {
       const res = await this.axios.get(`${this.baseUrl}/categories`);
       this.allTags = res.data;
-      this.allTags.unshift({ name: "all" });
     },
     paginate(productE) {
       let page = this.page;
@@ -159,15 +206,44 @@ export default {
       for (let index = 1; index < +numberOfPages; index++) {
         this.pages.push(index);
       }
-    },handleClickOutside(event) {
-    // Verificar si el clic no ocurrió dentro de las etiquetas
-    const tagsContainer = this.$refs.tagsContainer; // Añade una referencia a las etiquetas en tu plantilla
-    if (tagsContainer && !tagsContainer.contains(event.target)) {
-      // Cerrar las etiquetas
-      this.showTags = false;
-      this.isArrowUp = false;
-    }
-  },
+    },
+    handleClickOutside(event) {
+      // Verificar si el clic no ocurrió dentro de las etiquetas
+      const tagsContainer = this.$refs.tagsContainer; // Añade una referencia a las etiquetas en tu plantilla
+      if (tagsContainer && !tagsContainer.contains(event.target)) {
+        // Cerrar las etiquetas
+        this.showTags = false;
+        this.isArrowUp = false;
+      }
+    },
+    async addToCart(product, quantityToAdd) {
+      try {
+        // Verifica que la cantidad a agregar sea un número válido
+        const quantity = parseInt(quantityToAdd);
+
+        if (isNaN(quantity) || quantity <= 0) {
+          alert("Ingresa una cantidad válida para agregar al carrito.");
+          return;
+        }
+
+        product.unitStock -= quantity;
+        // Realiza una solicitud PUT al servidor para actualizar el producto
+        const response = await this.axios.put(
+          `${this.baseUrl}/productUpdate/${product.productID}`,
+          product
+        );
+
+        if (response.status === 200) {
+          console.log("Producto actualizado con éxito");
+        } else {
+          console.error("Error al actualizar el producto");
+        }
+        alert(`Producto a agregar al carrito: ${product.name}`);
+        alert(`Cantidad a agregar: ${quantity}`);
+      } catch (error) {
+        console.error("Error al agregar al carrito:", error);
+      }
+    },
   },
   computed: {
     displayProduts() {
@@ -175,9 +251,7 @@ export default {
     },
   },
   watch: {
-    products() {
-      this.setProducts();
-    },
+    products: "setProducts",
   },
 };
 </script>
