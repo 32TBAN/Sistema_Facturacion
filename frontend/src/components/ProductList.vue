@@ -1,5 +1,21 @@
 <template>
   <div class="container mt-5 bg-white p-3">
+    <h1 class="pb-3">Facturación</h1>
+
+    <div class="productod">
+      <BusquedaProducto
+        v-show="verProductos"
+        @close="verProductosClick"
+      ></BusquedaProducto>
+    </div>
+
+    <div class="clientes">
+      <BusquedaClientes
+        v-show="verClientes"
+        @close="verClientesClick"
+      ></BusquedaClientes>
+    </div>
+
     <transition name="fade">
       <pop-up
         :total="total"
@@ -8,7 +24,25 @@
         @comprar="limpiar()"
       />
     </transition>
-    <h1 class="pb-3">Tu carrito</h1>
+
+    <div class="">
+      <div class="col-1 m-5">Orden #{{ numOrden }}</div>
+    </div>
+    <div class="datoscliente row table-header pb-3">
+      <div class="col-3">Id: {{customer._id}}</div>
+      <div class="col-3">Nombre: {{customer.name}}</div>
+      <div class="col-3">Email:{{customer.email}}</div>
+      <button class="col-3 btn btn-success" @click="verClientesClick">
+        Buscar cliente
+      </button>
+    </div>
+    <button
+      class="btn btn-success"
+      @click="verProductosClick"
+      style="margin: 10px"
+    >
+      Agregar Producto +
+    </button>
     <div class="row table-header pb-3">
       <div class="col-3">Nombre</div>
       <div class="col-3">Cantidad</div>
@@ -65,17 +99,21 @@
         <p class="text-primary">Total</p>
         <p>{{ "$ " + total.toFixed(2) }}</p>
       </div>
-      <button class="btn btn-primary" @click="toglePopUP()">Comprar</button>
+      <button class="btn btn-primary" @click="toglePopUP()">Finalizar</button>
     </div>
   </div>
 </template>
 
 <script>
 import PopUp from "./PopUp.vue";
+import BusquedaProducto from "./ProductsSearch.vue";
+import BusquedaClientes from "./ClienetsList.vue";
 
 export default {
   components: {
     PopUp,
+    BusquedaProducto,
+    BusquedaClientes,
   },
   data() {
     return {
@@ -84,12 +122,28 @@ export default {
       total: 0,
       order: [],
       popup: false,
+      verProductos: false,
+      verClientes: false,
+      numOrden: 0,
+      customer: 0
     };
   },
   created() {
-    this.getProducts();
+    this.getNumOrder();
   },
   methods: {
+    async getNumOrder() {
+      let lastOrder = (await this.axios.get(`${this.baseUrl}/lastOrder`)).data;
+      if (lastOrder[0].cerrada) {
+        this.numOrden = lastOrder[0].orderID + 1;
+      } else {
+        this.numOrden = lastOrder[0].orderID;
+      }
+      this.order = (
+        await this.axios.get(`${this.baseUrl}/order/${this.numOrden}`)
+      ).data;
+      this.getProducts();
+    },
     async limpiar() {
       let eliminados = [];
       let numberDeletes = this.products.length;
@@ -113,31 +167,59 @@ export default {
     toglePopUP() {
       this.popup = !this.popup;
     },
+    async verProductosClick() {
+      this.verProductos = !this.verProductos;
+      this.products = [];
+      await this.getProducts();
+    },
+    async verClientesClick() {
+      this.verClientes = !this.verClientes;
+      this.products = [];
+      await this.getProducts();
+    },
     async getProducts() {
-      this.order = (
-        await this.axios.get(`${this.baseUrl}/orderSearchBycustomerID/${"01"}`)
-      ).data;
-
-      const details = (
-        await this.axios.get(
-          `${this.baseUrl}/orderDetails/${this.order.orderID}`
-        )
-      ).data;
-
-      for (let index = 0; index < details.length; index++) {
-        const producto = (
+      if (this.order != null) {
+        const details = (
           await this.axios.get(
-            `${this.baseUrl}/product/${details[index].productID}`
+            `${this.baseUrl}/orderDetails/${this.order.orderID}`
           )
         ).data;
-        this.products.push({
-          productID: producto[0].productID,
-          name: producto[0].name,
-          quantity: details[index].quantity,
-          unitPrice: "$ " + producto[0].unitPrice,
-        });
 
-        this.total += producto[0].unitPrice * details[index].quantity;
+        for (let index = 0; index < details.length; index++) {
+          const producto = (
+            await this.axios.get(
+              `${this.baseUrl}/product/${details[index].productID}`
+            )
+          ).data;
+          this.products.push({
+            productID: producto[0].productID,
+            name: producto[0].name,
+            quantity: details[index].quantity,
+            unitPrice: "$ " + producto[0].unitPrice,
+          });
+
+          this.total += producto[0].unitPrice * details[index].quantity;
+        }
+
+        this.customer = (await this.axios.get(
+            `${this.baseUrl}/customer/${this.order.customerID}`
+          )
+        ).data;
+      } else {
+        let order = {
+          orderID: this.numOrden,
+          customerID: "01",
+          cerrada: false,
+        };
+        const openOrder = await this.axios.post(
+          `${this.baseUrl}/openOrder`,
+          order
+        );
+        if (openOrder.status === 200) {
+          console.log("Orden abierta");
+        } else {
+          console.error("No se ha podido abrir la orden");
+        }
       }
     },
     editProduct(product) {

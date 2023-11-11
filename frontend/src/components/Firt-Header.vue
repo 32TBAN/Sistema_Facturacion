@@ -4,7 +4,7 @@
       <div class="container d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
           <a class="navbar-brand" href="#">
-            <img src="../assets/logo.png" alt="Inicio" width="30" height="24">
+            <img src="../assets/carrito.png" alt="Inicio" width="30" height="24">
           </a>
           <p class="mb-0 ms-3">Facturación</p>
         </div>

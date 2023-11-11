@@ -4,7 +4,7 @@ const routes = [
   {
     path: "/",
     name: "inicio",
-    component: () => import("../components/ProductList.vue"),
+    component: () => import("../components/loginFactura.vue"),
   },  {
     path: "/productsSearch",
     name: "productsSearch",
@@ -13,7 +13,11 @@ const routes = [
     path: "/clientsSearch",
     name: "clientsSearch",
     component: () => import("../components/ClienetsList.vue"),
-  },
+  },{
+    path: "/inicio",
+    name: "inicioLogin",
+    component: () => import("../components/ProductList.vue"),
+  }
 ];
 
 const router = createRouter({

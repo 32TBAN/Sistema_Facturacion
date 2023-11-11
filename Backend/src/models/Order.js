@@ -4,6 +4,7 @@ const order = new Schema(
   {
     orderID: Number,
     customerID: String,
+    cerrada: Boolean
   },
   {
     timestamps: true,

@@ -74,6 +74,8 @@ router.get("/customers", async (req, res) => {
   const customer = await Customer.find();
   res.json(customer);
 });
+
+
 /* actualizar */
 router.put("/productUpdate/:productID", async (req, res) => {
   try {
@@ -124,6 +126,11 @@ router.put("/detailsUpdate/:productID/:orderID", async (req, res) => {
   }
 });
 /* buscar */
+router.get("/lastOrder", async (req, res) => {
+  const order = await Order.find().sort({ createdAt: -1 }).limit(1);
+  res.json(order);
+});
+
 router.get("/orderSearchBycustomerID/:customerID", async (req, res) => {
   try {
     const customerID = req.params.customerID;
@@ -203,6 +210,39 @@ router.get("/searchProductDetail/:orderID/:productID", async (req, res) => {
   }
 });
 
+router.get("/order/:orderID", async (req, res) => {
+  try {
+    const orderID = req.params.orderID;
+
+    const filter = { orderID: orderID };
+
+    const resNew = await Order.findOne(filter);
+
+    if (!resNew) {
+      return res.json(null);
+    }
+
+    res.json(resNew);
+  } catch (error) {
+    res.json(error);
+  }
+});
+
+router.get("/customer/:customerID", async (req, res) => {
+  try {
+    const customerID = req.params.customerID;;
+
+    const resNew = await Customer.findById(customerID);
+
+    if (!resNew) {
+      return res.json(null);
+    }
+
+    res.json(resNew);
+  } catch (error) {
+    res.json(error);
+  }
+});
 /* 
 eliminar */
 router.delete("/orderDetailsDelete/:productID", async (req, res) => {
@@ -224,4 +264,41 @@ router.delete("/orderDetailsDelete/:productID", async (req, res) => {
   }
 });
 
+router.delete("/orderDelete/:orderID", async (req, res) => {
+  try {
+    const orderID = req.params.orderID;
+
+    const filter = { orderID: orderID };
+
+    // Utiliza el método findOneAndDelete para eliminar un producto
+    const result = await Order.findOneAndDelete(filter);
+
+    if (!result) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    res.json({ mensaje: "Producto eliminado correctamente" });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al eliminar el producto", error: error });
+  }
+});
+
+router.delete("/deleteProduct/:name", async (req, res) => {
+  try {
+    const name = req.params.name;
+
+    const filter = { name: name };
+
+    // Utiliza el método findOneAndDelete para eliminar un producto
+    const result = await Product.findOneAndDelete(filter);
+
+    if (!result) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    res.json({ mensaje: "Producto eliminado correctamente" });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al eliminar el producto", error: error });
+  }
+});
 export default router;

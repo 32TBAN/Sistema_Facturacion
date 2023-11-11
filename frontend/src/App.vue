@@ -3,8 +3,8 @@
     <nav class="navbar navbar-expand-lg bg-body-tertiary">
       <div class="container d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
-          <router-link to="/" class="navbar-brand" href="#">
-            <img src="./assets/logo.png" alt="Inicio" width="30" height="24" />
+          <router-link to="/inicio" class="navbar-brand" href="#">
+            <img src="./assets/carrito.png" alt="Inicio" width="30" height="24" />
           </router-link>
           <p class="mb-0 ms-3">Facturación</p>
         </div>
@@ -24,17 +24,24 @@
           <button class="btn btn-outline-success me-2">Buscar clientes</button>
         </router-link>
 
+        <router-link to="/inicio" class="navbar-brand" href="#">
+          <button class="btn btn-outline-success">Facturar</button>
+        </router-link>
+
         <router-link to="/" class="navbar-brand" href="#">
-          <button class="btn btn-outline-success">Carrito</button>
+          <button class="btn btn-outline-danger">Cerrar Sesión</button>
         </router-link>
       </div>
     </nav>
+
     <router-view />
   </div>
 </template>
 
 <script>
-export default {};
+export default {
+
+};
 </script>
 
 <style>

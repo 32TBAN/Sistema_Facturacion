@@ -1,5 +1,6 @@
 <template>
-  <div class="bg-transparent">
+  <div class="pop-up">
+    <div class="pop-up-close" @click="close()">&times;</div>
     <h4 class="pb-1">Busqueda de productos</h4>
 
     <div class="container d-flex flex-column align-items-center">
@@ -40,7 +41,10 @@
         </div>
       </div>
     </div>
-    <div class="container mt-1 bg-white p-3">
+    <div
+      class="container mt-5 bg-white p-3"
+      style="max-height: 400px; overflow-y: auto"
+    >
       <div class="row table-header pb-3">
         <div class="col-2">Nombre</div>
         <div class="col-2">Cantidad x Unidad</div>
@@ -124,7 +128,7 @@ export default {
       showTags: false,
       baseUrl: "http://localhost:3000",
       page: 1,
-      perPage: 10,
+      perPage: 5,
       pages: [],
       nameSearch: "",
       searchTags: [],
@@ -138,6 +142,9 @@ export default {
     window.addEventListener("click", this.handleClickOutside);
   },
   methods: {
+    close() {
+      this.$emit("close");
+    },
     searchByTags() {
       // Filtra productos por etiquetas seleccionadas
       let filteredByTags = this.originalProducts.filter((product) => {
@@ -224,7 +231,7 @@ export default {
         // Verifica que la cantidad a agregar sea un número válido
         const quantity = parseInt(quantityToAdd[product.productID]);
 
-        if (isNaN(quantity) || quantity <= 0) {
+        if (isNaN(quantity) || quantity <= 0 || quantity % 1 !== 0) {
           alert("Ingresa una cantidad válida para agregar al carrito.");
           return;
         }
@@ -247,46 +254,44 @@ export default {
           console.error("Error al actualizar el producto");
         }
 
-        //busca la orden segun el usuario
-        let order = (
-          await this.axios.get(
-            `${this.baseUrl}/orderSearchBycustomerID/${"01"}`
-          )
-        ).data;
-        let openOrder = order == null ? false : true;
-        //si la orden no esta abierta o es la primera la crea
-        if (!openOrder) {
-          order = {
-            orderID: 1,
-            customerID: "01",
-          };
-          const openOrder = await this.axios.post(
-            `${this.baseUrl}/openOrder`,
-            order
-          );
-          if (openOrder.status === 200) {
-            console.log("Orden abierta");
-          } else {
-            console.error("No se ha podido abrir la orden");
-          }
-        }
+        // //busca la orden segun el usuario
+        // let order = (
+        //   await this.axios.get(
+        //     `${this.baseUrl}/orderSearchBycustomerID/${"01"}`
+        //   )
+        // ).data;
+        // let openOrder = order == null ? false : true;
+        // //si la orden no esta abierta o es la primera la crea
+        // if (!openOrder) {
+        //   order = {
+        //     orderID: 1,
+        //     customerID: "01",
+        //   };
+        //   const openOrder = await this.axios.post(
+        //     `${this.baseUrl}/openOrder`,
+        //     order
+        //   );
+        //   if (openOrder.status === 200) {
+        //     console.log("Orden abierta");
+        //   } else {
+        //     console.error("No se ha podido abrir la orden");
+        //   }
+        // }
 
         //nuevo produco add a detalles
-        let existDetails = (
+/*         let existDetails = (
           await this.axios.get(
             `${this.baseUrl}/searchProductDetail/${order.orderID}/${product.productID}`
           )
-        ).data;
+        ).data; */
 
-        if (existDetails == null) {
-          existDetails = 
-            {
-              orderID: order.orderID,
-              productID: product.productID,
-              unitPrice: product.unitPrice,
-              quantity: quantityToAdd[product.productID],
-            }
-          
+       /*  if (existDetails == null) {
+          existDetails = {
+            orderID: order.orderID,
+            productID: product.productID,
+            unitPrice: product.unitPrice,
+            quantity: quantityToAdd[product.productID],
+          };
 
           const addDetails = await this.axios.post(
             `${this.baseUrl}/orderDetails`,
@@ -304,7 +309,7 @@ export default {
             `${this.baseUrl}/detailsUpdate/${product.productID}/${order.orderID}`,
             existDetails
           );
-        }
+        } */
 
         // Utiliza product.productID como clave para rastrear la cantidad específica del producto
         if (!this.quantityToAdd[product.productID]) {

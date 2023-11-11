@@ -1,5 +1,6 @@
 <template>
-  <div class="bg-transparent">
+  <div class="pop-up">
+    <div class="pop-up-close" @click="close()">&times;</div>
     <h4 class="pb-1">Buscar cliente</h4>
 
     <div class="container d-flex flex-column align-items-center">
@@ -52,7 +53,8 @@
         class="row m-2 p-3 rounded-corner"
         v-for="customer in displayCustomers"
         :key="customer._id"
-        style="background-color: #d9d9d9"
+        style="background-color: #d9d9d9; cursor: pointer;"
+        @click="addClient(customer)"
       >
         <div class="col-3">{{ customer._id }}</div>
         <div class="col-3">{{ customer.name }}</div>
@@ -101,11 +103,12 @@ export default {
       showTags: false,
       baseUrl: "http://localhost:3000",
       page: 1,
-      perPage: 10,
+      perPage: 5,
       pages: [],
       nameSearch: "",
       searchTags: [],
       originalCustomers: [],
+      customer: 0
     };
   },
   created() {
@@ -113,6 +116,9 @@ export default {
     window.addEventListener("click", this.handleClickOutside);
   },
   methods: {
+    close() {
+      this.$emit("close");
+    },
     searchByTags() {
       // Filtrar productos por etiquetas seleccionadas
       let filteredCustomers = [...this.originalCustomers];
@@ -187,6 +193,9 @@ export default {
         this.isArrowUp = false;
       }
     },
+    addClient(customer){
+      this.customer = customer
+    }
   },
   computed: {
     displayCustomers() {
@@ -199,7 +208,7 @@ export default {
 };
 </script>
 
-<style>
+<style lang="scss">
 .tags-container {
   border: 1px solid #ccc;
   background-color: white;
@@ -214,5 +223,44 @@ export default {
 
 .black-border {
   border: 2px solid black; /* Cambia el color del borde según tus preferencias */
+}
+
+.pop-up {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 32px 16px 120px;
+  height: 100vh;
+  widows: 100%;
+  background-color: #52a07ed5;
+  display: grid;
+  place-items: center;
+
+  &-close {
+    position: absolute;
+    height: 52px;
+    widows: 52px;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    top: 0;
+    right: 0;
+    font-size: 3rem;
+    color: #d6d6d6;
+    cursor: pointer;
+  }
+
+  &-inner {
+    background-color: #fff;
+    color: #000;
+    position: relative;
+    widows: 60%;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 5px 5px #000;
+    transition: all 250ms ease-in-out;
+  }
 }
 </style>
