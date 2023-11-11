@@ -75,7 +75,10 @@ router.get("/customers", async (req, res) => {
   res.json(customer);
 });
 
-
+router.get("/orders", async (req, res) => {
+  const order = await Order.find();
+  res.json(order);
+});
 /* actualizar */
 router.put("/productUpdate/:productID", async (req, res) => {
   try {

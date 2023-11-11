@@ -152,13 +152,19 @@ export default {
       this.getProducts();
     },
     async finalizar() {
-      if (this.order.customerID || this.products.length != 0) {
+      if (this.order.customerID && this.products.length != 0) {
         this.order.cerrada = true;
         await this.axios.put(
           `${this.baseUrl}/orderUpdate/${this.order.orderID}`,
           this.order
         );
         this.popup = !this.popup;
+        this.products = [];
+        this.customer = {
+          _id: "No elegido",
+          name: "No elegido",
+          email: "No elegido",
+        };
         this.getNumOrder();
       } else {
         alert("No ha selecionado ningun cliente o ningun producto");
@@ -181,7 +187,7 @@ export default {
     },
     async getProducts() {
       this.total = 0;
-      if (this.order != null) {
+      if (this.order.orderID != 0) {
         const details = (
           await this.axios.get(
             `${this.baseUrl}/orderDetails/${this.order.orderID}`

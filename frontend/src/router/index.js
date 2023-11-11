@@ -17,6 +17,10 @@ const routes = [
     path: "/inicio",
     name: "inicioLogin",
     component: () => import("../components/ProductList.vue"),
+  },{
+    path: "/facturas",
+    name: "facturas",
+    component: () => import("../components/ListaFacturas.vue"),
   }
 ];
 

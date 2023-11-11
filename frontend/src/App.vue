@@ -8,7 +8,7 @@
           </router-link>
           <p class="mb-0 ms-3">Facturación</p>
         </div>
-        <router-link to="/clientsSearch" class="navbar-brand" href="#">
+        <router-link to="/facturas" class="navbar-brand" href="#">
           <button class="btn btn-outline-info me-2">Facturas</button>
         </router-link>
         <form class="d-flex me-2">
