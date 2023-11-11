@@ -71,8 +71,7 @@
                 v-model="quantityToAdd[product.productID]"
                 type="number"
                 placeholder="cantidad"
-                min="0"
-                step="1"
+                min="1"
                 required
               />
             </div>
@@ -140,6 +139,9 @@ export default {
     this.getProducts();
     this.getCategories();
     window.addEventListener("click", this.handleClickOutside);
+  },
+  props: {
+    numOrder: Number,
   },
   methods: {
     close() {
@@ -226,10 +228,13 @@ export default {
         this.isArrowUp = false;
       }
     },
+    onAgregarProductoClick() {
+      this.getProducts(); // Llama a getProducts aquí
+    },
     async addToCart(product, quantityToAdd) {
       try {
         // Verifica que la cantidad a agregar sea un número válido
-        const quantity = parseInt(quantityToAdd[product.productID]);
+        const quantity = parseFloat(quantityToAdd[product.productID]);
 
         if (isNaN(quantity) || quantity <= 0 || quantity % 1 !== 0) {
           alert("Ingresa una cantidad válida para agregar al carrito.");
@@ -254,13 +259,11 @@ export default {
           console.error("Error al actualizar el producto");
         }
 
-        // //busca la orden segun el usuario
-        // let order = (
-        //   await this.axios.get(
-        //     `${this.baseUrl}/orderSearchBycustomerID/${"01"}`
-        //   )
-        // ).data;
-        // let openOrder = order == null ? false : true;
+        //busca la orden
+        let order = (
+          await this.axios.get(`${this.baseUrl}/order/${this.numOrder}`)
+        ).data;
+
         // //si la orden no esta abierta o es la primera la crea
         // if (!openOrder) {
         //   order = {
@@ -278,14 +281,14 @@ export default {
         //   }
         // }
 
-        //nuevo produco add a detalles
-/*         let existDetails = (
+        //ver si el producto existe en el detalle
+        let existDetails = (
           await this.axios.get(
             `${this.baseUrl}/searchProductDetail/${order.orderID}/${product.productID}`
           )
-        ).data; */
-
-       /*  if (existDetails == null) {
+        ).data;
+        // si no existe lo add
+        if (existDetails == null) {
           existDetails = {
             orderID: order.orderID,
             productID: product.productID,
@@ -304,12 +307,13 @@ export default {
             console.error("Error al detalle");
           }
         } else {
+          //caso contrario solo lo aumentamos en el detalle
           existDetails.quantity += quantityToAdd[product.productID];
           await this.axios.put(
             `${this.baseUrl}/detailsUpdate/${product.productID}/${order.orderID}`,
             existDetails
           );
-        } */
+        }
 
         // Utiliza product.productID como clave para rastrear la cantidad específica del producto
         if (!this.quantityToAdd[product.productID]) {
@@ -331,6 +335,9 @@ export default {
   },
   watch: {
     products: "setProducts",
+  },
+  mounted() {
+    this.getProducts();
   },
 };
 </script>

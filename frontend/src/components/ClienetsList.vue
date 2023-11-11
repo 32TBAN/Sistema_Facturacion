@@ -114,7 +114,9 @@ export default {
   created() {
     this.getCustomers();
     window.addEventListener("click", this.handleClickOutside);
-  },
+  },props:{
+        numOrder: Number
+    },
   methods: {
     close() {
       this.$emit("close");
@@ -193,8 +195,17 @@ export default {
         this.isArrowUp = false;
       }
     },
-    addClient(customer){
-      this.customer = customer
+    async addClient(customer){
+      
+      let order = (await this.axios.get(`${this.baseUrl}/order/${this.numOrder}`)).data
+
+      await this.axios.put(`${this.baseUrl}/orderUpdate/${this.numOrder}`,{
+        orderID: order.orderID,
+        customerID: customer._id,
+        cerrada: false
+      })
+
+      this.close()
     }
   },
   computed: {

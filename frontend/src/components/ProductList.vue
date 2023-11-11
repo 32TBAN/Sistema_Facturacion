@@ -2,51 +2,54 @@
   <div class="container mt-5 bg-white p-3">
     <h1 class="pb-3">Facturación</h1>
 
-    <div class="productod">
+    <transition name="fade">
       <BusquedaProducto
         v-show="verProductos"
         @close="verProductosClick"
+        :numOrder="this.numOrden"
+        ref="myComponent"
       ></BusquedaProducto>
-    </div>
+    </transition>
 
-    <div class="clientes">
+    <transition name="fade">
       <BusquedaClientes
         v-show="verClientes"
         @close="verClientesClick"
+        :numOrder="this.numOrden"
       ></BusquedaClientes>
-    </div>
+    </transition>
 
     <transition name="fade">
       <pop-up
         :total="total"
         v-show="popup"
         @close="toglePopUP()"
-        @comprar="limpiar()"
+        @comprar="finalizar()"
       />
     </transition>
 
     <div class="">
-      <div class="col-1 m-5">Orden #{{ numOrden }}</div>
+      <div class="col-1 ms-5">Orden #{{ numOrden }}</div>
     </div>
-    <div class="datoscliente row table-header pb-3">
-      <div class="col-3">Id: {{customer._id}}</div>
-      <div class="col-3">Nombre: {{customer.name}}</div>
-      <div class="col-3">Email:{{customer.email}}</div>
+
+    <div class="row table-header pb-3">
+      <div class="col-3">Id: {{ customer._id }}</div>
+      <div class="col-3">Nombre: {{ customer.name }}</div>
+      <div class="col-3">Email:{{ customer.email }}</div>
       <button class="col-3 btn btn-success" @click="verClientesClick">
         Buscar cliente
       </button>
     </div>
-    <button
-      class="btn btn-success"
-      @click="verProductosClick"
-      style="margin: 10px"
-    >
-      Agregar Producto +
-    </button>
-    <div class="row table-header pb-3">
+
+    <div class="row table-header">
       <div class="col-3">Nombre</div>
-      <div class="col-3">Cantidad</div>
-      <div class="col-3">Precio</div>
+      <div class="col-3 text-end">Cantidad</div>
+      <div class="col-3 text-end">Precio</div>
+      <div class="col-3 text-end">
+        <button class="btn btn-success" @click="verProductosClick">
+          Agregar Producto +
+        </button>
+      </div>
     </div>
 
     <div
@@ -55,8 +58,8 @@
       :key="product._id"
       style="background-color: #d9d9d9"
     >
-      <div class="col-3">{{ product.name }}</div>
-      <div class="col-3">
+      <div class="col-3 text-start">{{ product.name }}</div>
+      <div class="col-3 text-end">
         <span v-if="!product.editMode">{{ product.quantity }}</span>
         <input
           v-else
@@ -67,7 +70,7 @@
           required
         />
       </div>
-      <div class="col-3">{{ product.unitPrice }}</div>
+      <div class="col-3 text-end">{{ product.unitPrice }}</div>
       <div class="col-3 mb-2">
         <button
           class="btn btn-outline-danger me-2"
@@ -94,12 +97,12 @@
         </button>
       </div>
     </div>
-    <div class="container d-flex align-items-center justify-content-end p-2">
-      <div class="m-5 p-2">
-        <p class="text-primary">Total</p>
-        <p>{{ "$ " + total.toFixed(2) }}</p>
-      </div>
-      <button class="btn btn-primary" @click="toglePopUP()">Finalizar</button>
+
+    <div class="col-9 container d-flex align-items-center justify-content-end">
+      <p class="text-primary">Total: {{ total.toFixed(2) + " $" }}</p>
+      <button class="btn btn-primary ms-5" @click="toglePopUP()">
+        Finalizar
+      </button>
     </div>
   </div>
 </template>
@@ -120,12 +123,12 @@ export default {
       products: [],
       baseUrl: "http://localhost:3000",
       total: 0,
-      order: [],
+      order: { orderID: 0 },
       popup: false,
       verProductos: false,
       verClientes: false,
       numOrden: 0,
-      customer: 0
+      customer: { _id: "No elegido", name: "No elegido", email: "No elegido" },
     };
   },
   created() {
@@ -134,7 +137,7 @@ export default {
   methods: {
     async getNumOrder() {
       let lastOrder = (await this.axios.get(`${this.baseUrl}/lastOrder`)).data;
-      if (lastOrder[0].cerrada) {
+      if (lastOrder == null || lastOrder[0].cerrada) {
         this.numOrden = lastOrder[0].orderID + 1;
       } else {
         this.numOrden = lastOrder[0].orderID;
@@ -142,26 +145,23 @@ export default {
       this.order = (
         await this.axios.get(`${this.baseUrl}/order/${this.numOrden}`)
       ).data;
+
+      if (this.order == null) {
+        this.order = { orderID: 0 };
+      }
       this.getProducts();
     },
-    async limpiar() {
-      let eliminados = [];
-      let numberDeletes = this.products.length;
-
-      for (let index = 0; index < numberDeletes; index++) {
-        eliminados.push(
-          (
-            await this.axios.delete(
-              `${this.baseUrl}/orderDetailsDelete/${this.products[index].productID}`
-            )
-          ).data
+    async finalizar() {
+      if (this.order.customerID || this.products.length != 0) {
+        this.order.cerrada = true;
+        await this.axios.put(
+          `${this.baseUrl}/orderUpdate/${this.order.orderID}`,
+          this.order
         );
-
-        if (eliminados.length == numberDeletes) {
-          this.products = [];
-          this.popup = false;
-          this.total = 0;
-        }
+        this.popup = !this.popup;
+        this.getNumOrder();
+      } else {
+        alert("No ha selecionado ningun cliente o ningun producto");
       }
     },
     toglePopUP() {
@@ -170,14 +170,17 @@ export default {
     async verProductosClick() {
       this.verProductos = !this.verProductos;
       this.products = [];
-      await this.getProducts();
+      await this.getNumOrder();
+
+      this.$refs.myComponent.getProducts();
     },
     async verClientesClick() {
-      this.verClientes = !this.verClientes;
       this.products = [];
-      await this.getProducts();
+      await this.getNumOrder();
+      this.verClientes = !this.verClientes;
     },
     async getProducts() {
+      this.total = 0;
       if (this.order != null) {
         const details = (
           await this.axios.get(
@@ -195,21 +198,24 @@ export default {
             productID: producto[0].productID,
             name: producto[0].name,
             quantity: details[index].quantity,
-            unitPrice: "$ " + producto[0].unitPrice,
+            unitPrice: producto[0].unitPrice + " $",
           });
 
           this.total += producto[0].unitPrice * details[index].quantity;
         }
 
-        this.customer = (await this.axios.get(
-            `${this.baseUrl}/customer/${this.order.customerID}`
-          )
-        ).data;
+        if (this.order.customerID) {
+          this.customer = (
+            await this.axios.get(
+              `${this.baseUrl}/customer/${this.order.customerID}`
+            )
+          ).data;
+        }
       } else {
+        //si no hay una orden con el numero de orden crea una nueva
         let order = {
           orderID: this.numOrden,
-          customerID: "01",
-          cerrada: false,
+          cerrada: false, //lo creo sin customerID por que luego lo agrego.
         };
         const openOrder = await this.axios.post(
           `${this.baseUrl}/openOrder`,
@@ -235,6 +241,23 @@ export default {
         product.editQuantity % 1 != 0
       ) {
         alert("Ingresa una cantidad válida para agregar al carrito.");
+        return;
+      }
+
+      let productoB = (
+        await this.axios(`${this.baseUrl}/product/${product.productID}`)
+      ).data;
+
+      if (productoB[0].unitStock == 0) {
+        if (product.quantity < product.editQuantity) {
+          alert("Bajo stock");
+          return;
+        }
+      } else if (
+        productoB[0].unitStock + product.quantity <
+        product.editQuantity
+      ) {
+        alert("Bajo stock");
         return;
       }
 
@@ -268,6 +291,8 @@ export default {
       // Guarda la nueva cantidad y desactiva el modo de edición
       product.quantity = product.editQuantity;
       product.editMode = false;
+      this.products = [];
+      await this.getNumOrder();
     },
     cancelEdit(product) {
       // Cancela la edición y restaura la cantidad original

@@ -23,7 +23,7 @@ export default {
         <font-awesome-icon :icon="['fas', 'percent']" />
         <p class="m-4">Total: {{total.toFixed(2)}} </p>
         <button class="btn btn-danger m-4" @click="close()">Cancelar</button>
-        <button class="btn btn-success m-4 " @click="comprar()">Comprar</button>
+        <button class="btn btn-success m-4 " @click="comprar()">Finalizar</button>
     </div>
   </div>
 </template>

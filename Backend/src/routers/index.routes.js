@@ -125,10 +125,38 @@ router.put("/detailsUpdate/:productID/:orderID", async (req, res) => {
     console.log(error);
   }
 });
+
+router.put("/orderUpdate/:orderID", async (req, res) => {
+  try {
+    const orderNew = req.body;
+    const orderID = req.params.orderID;
+
+    const filter = { orderID: orderID };
+    const options = { new: true };
+
+    const resNew = await Order.findOneAndUpdate(filter, orderNew, options);
+
+    if (!resNew) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    res.json("Orden actualizada");
+  } catch (error) {
+    console.log(error);
+  }
+});
 /* buscar */
 router.get("/lastOrder", async (req, res) => {
-  const order = await Order.find().sort({ createdAt: -1 }).limit(1);
-  res.json(order);
+  try {
+    const order = await Order.find().sort({ updatedAt: -1 }).limit(1);
+    if (!order) {
+      return res.json(null);
+    }
+    res.json(order);
+  } catch (error) {
+    console.log(error);
+  }
+
 });
 
 router.get("/orderSearchBycustomerID/:customerID", async (req, res) => {
