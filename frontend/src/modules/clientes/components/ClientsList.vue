@@ -1,277 +1,127 @@
 <template>
-  <div class="pop-up">
-    <div class="pop-up-close" @click="close()">&times;</div>
-    <h4 class="pb-1">Buscar cliente</h4>
+  <section class="customers-page">
+    <header>
+      <h2>Clientes</h2>
+      <p>Base de clientes registrada en el backend.</p>
+    </header>
 
-    <div class="container d-flex flex-column align-items-center">
-      <form class="d-flex me-2 mb-3">
-        <input
-          class="form-control"
-          type="search"
-          placeholder="Ingrese un valor"
-          aria-label="Search"
-          v-model="nameSearch"
-          @input="searchByTags"
-        />
-      </form>
-
-      <div class="d-flex flex-column align-items-center" ref="tagsContainer">
-        <p
-          class="bg-body-tertiary rounded-corner black-border p-1"
-          @click="toggleArrowIcon"
-        >
-          Tags
-          <font-awesome-icon
-            :icon="isArrowUp ? 'chevron-up' : 'chevron-down'"
-          />
-        </p>
-
-        <div v-if="showTags" class="tags-container">
-          <!-- Contenido de etiquetas -->
-          <div v-for="tag in allTags" v-bind:key="tag">
-            <input
-              type="checkbox"
-              :id="tag"
-              :value="tag"
-              v-model="searchTags"
-              @change="searchByTags"
-            />
-            <label class="p-2" :for="tag">{{ tag }}</label>
-          </div>
-        </div>
-      </div>
+    <div class="toolbar">
+      <input v-model="search" type="search" placeholder="Buscar por nombre o identificacion" />
     </div>
-    <div class="container mt-1 bg-white p-3">
-      <div class="row table-header pb-3">
-        <div class="col-3">id</div>
-        <div class="col-3">Nombre</div>
-        <div class="col-3">Email</div>
-        <div class="col-3">Ciudad</div>
-      </div>
 
-      <div
-        class="row m-2 p-3 rounded-corner"
-        v-for="customer in displayCustomers"
-        :key="customer._id"
-        style="background-color: #d9d9d9; cursor: pointer;"
-        @click="addClient(customer)"
-      >
-        <div class="col-3">{{ customer._id }}</div>
-        <div class="col-3">{{ customer.name }}</div>
-        <div class="col-3">{{ customer.email }}</div>
-        <div class="col-3">{{ customer.country }}</div>
-      </div>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Identificacion</th>
+          <th>Email</th>
+          <th>Telefono</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="customer in filteredCustomers" :key="customer.id">
+          <td>{{ customer.id }}</td>
+          <td>{{ displayName(customer) }}</td>
+          <td>{{ customer.identification }}</td>
+          <td>{{ customer.email || "-" }}</td>
+          <td>{{ customer.phone || "-" }}</td>
+        </tr>
+        <tr v-if="filteredCustomers.length === 0">
+          <td colspan="5" class="empty">No hay clientes para mostrar</td>
+        </tr>
+      </tbody>
+    </table>
 
-      <div class="btn-group col-md-2 off-set-md-5">
-        <button
-          type="button"
-          v-if="page != 1"
-          @click="page--"
-          class="btn btn-sm btn-outline-secondary"
-        >
-          Before
-        </button>
-        <button
-          type="button"
-          v-for="pageNumber in pages.slice(page - 1, page + 2)"
-          v-bind:key="pageNumber"
-          class="btn btn-sm btn-outline-secondary"
-          @click="page = pageNumber"
-        >
-          {{ pageNumber }}
-        </button>
-        <button
-          type="button"
-          @click="page++"
-          v-if="page < pages.length"
-          class="btn btn-sm btn-outline-secondary"
-        >
-          Next
-        </button>
-      </div>
-    </div>
-  </div>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  </section>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      customers: [],
-      allTags: ["id", "nombre", "email", "pais"],
-      isArrowUp: false,
-      showTags: false,
-      baseUrl: "http://localhost:3000",
-      page: 1,
-      perPage: 5,
-      pages: [],
-      nameSearch: "",
-      searchTags: [],
-      originalCustomers: [],
-      customer: 0
-    };
-  },
-  created() {
-    this.getCustomers();
-    window.addEventListener("click", this.handleClickOutside);
-  },props:{
-        numOrder: Number
-    },
-  methods: {
-    close() {
-      this.$emit("close");
-    },
-    searchByTags() {
-      // Filtrar productos por etiquetas seleccionadas
-      let filteredCustomers = [...this.originalCustomers];
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { httpClient } from "@/shared/http/client";
 
-      if (this.searchTags.length > 0) {
-        // Filtra por etiquetas seleccionadas
-        filteredCustomers = this.customers.filter((customer) => {
-          return this.searchTags.includes("id")
-            ? customer._id.includes(this.nameSearch)
-            : false || this.searchTags.includes("nombre")
-            ? customer.name
-                .toLowerCase()
-                .includes(this.nameSearch.toLowerCase())
-            : false || this.searchTags.includes("email")
-            ? customer.email
-                .toLowerCase()
-                .includes(this.nameSearch.toLowerCase())
-            : false || this.searchTags.includes("pais")
-            ? customer.country
-                .toLowerCase()
-                .includes(this.nameSearch.toLowerCase())
-            : false;
-        });
-      }
-
-      // Si no se han seleccionado etiquetas, realiza la búsqueda por nombre de forma predeterminada
-      if (this.nameSearch && this.searchTags.length === 0) {
-        filteredCustomers = this.originalCustomers.filter((customer) => {
-          return customer.name
-            .toLowerCase()
-            .includes(this.nameSearch.toLowerCase());
-        });
-      }
-
-      this.customers = filteredCustomers;
-
-      if (this.customers.length === 0) {
-        // Si no se encuentran resultados, restaura la lista original
-        this.customers = [...this.originalCustomers];
-      }
-    },
-    toggleArrowIcon() {
-      this.showTags = !this.showTags;
-      this.isArrowUp = !this.isArrowUp;
-    },
-    async getCustomers() {
-      const res = await this.axios.get(`${this.baseUrl}/customers`);
-      this.customers = res.data;
-      // Copia la lista original al cargar
-      this.originalCustomers = [...this.customers];
-      this.customers.sort((a, b) => b.name - a.name);
-    },
-    paginate(customersE) {
-      let page = this.page;
-      let perPage = this.perPage;
-      let from = page * perPage - perPage;
-      let to = page * perPage;
-      return customersE.slice(from, to);
-    },
-    setCustomers() {
-      let numberOfPages = Math.ceil(this.customers.length / this.perPage);
-      for (let index = 1; index < +numberOfPages; index++) {
-        this.pages.push(index);
-      }
-    },
-    handleClickOutside(event) {
-      // Verificar si el clic no ocurrió dentro de las etiquetas
-      const tagsContainer = this.$refs.tagsContainer; // Añade una referencia a las etiquetas en tu plantilla
-      if (tagsContainer && !tagsContainer.contains(event.target)) {
-        // Cerrar las etiquetas
-        this.showTags = false;
-        this.isArrowUp = false;
-      }
-    },
-    async addClient(customer){
-      
-      let order = (await this.axios.get(`${this.baseUrl}/order/${this.numOrder}`)).data
-
-      await this.axios.put(`${this.baseUrl}/orderUpdate/${this.numOrder}`,{
-        orderID: order.orderID,
-        customerID: customer._id,
-        cerrada: false
-      })
-
-      this.close()
-    }
-  },
-  computed: {
-    displayCustomers() {
-      return this.paginate(this.customers);
-    },
-  },
-  watch: {
-    customers: "setCustomers",
-  },
+type Customer = {
+  id: number;
+  fullName: string | null;
+  businessName: string | null;
+  identification: string;
+  email: string | null;
+  phone: string | null;
 };
+
+const customers = ref<Customer[]>([]);
+const search = ref("");
+const errorMessage = ref("");
+
+const displayName = (customer: Customer) =>
+  customer.fullName || customer.businessName || "Sin nombre";
+
+const filteredCustomers = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  if (!term) return customers.value;
+
+  return customers.value.filter((customer) => {
+    const name = displayName(customer).toLowerCase();
+    return name.includes(term) || customer.identification.toLowerCase().includes(term);
+  });
+});
+
+onMounted(async () => {
+  try {
+    const { data } = await httpClient.get<Customer[]>("/customers");
+    customers.value = data;
+  } catch {
+    errorMessage.value = "No se pudo cargar la lista de clientes.";
+  }
+});
 </script>
 
-<style lang="scss">
-.tags-container {
-  border: 1px solid #ccc;
-  background-color: white;
-  padding: 10px;
-  border-radius: 4px;
-  position: absolute;
-}
-
-.rounded-corner {
-  border-radius: 15px; /* Ajusta el valor según tus preferencias */
-}
-
-.black-border {
-  border: 2px solid black; /* Cambia el color del borde según tus preferencias */
-}
-
-.pop-up {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  padding: 32px 16px 120px;
-  height: 100vh;
-  widows: 100%;
-  background-color: #52a07ed5;
+<style scoped>
+.customers-page {
   display: grid;
-  place-items: center;
+  gap: 12px;
+  text-align: left;
+}
 
-  &-close {
-    position: absolute;
-    height: 52px;
-    widows: 52px;
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    top: 0;
-    right: 0;
-    font-size: 3rem;
-    color: #d6d6d6;
-    cursor: pointer;
-  }
+header h2,
+header p {
+  margin: 0;
+}
 
-  &-inner {
-    background-color: #fff;
-    color: #000;
-    position: relative;
-    widows: 60%;
-    padding: 40px;
-    border-radius: 8px;
-    box-shadow: 0 5px 5px #000;
-    transition: all 250ms ease-in-out;
-  }
+.toolbar input {
+  width: 100%;
+  max-width: 340px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+th {
+  background: #f8fafc;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
 }
 </style>

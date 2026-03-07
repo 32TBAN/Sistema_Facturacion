@@ -1,335 +1,363 @@
 <template>
-  <div class="container mt-5 bg-white p-3">
-    <h1 class="pb-3">Facturación</h1>
+  <section class="invoice-builder">
+    <header class="panel">
+      <h1>Nueva factura</h1>
+      <p>Selecciona cliente y productos para emitir la factura.</p>
+    </header>
 
-    <transition name="fade">
-      <BusquedaProducto
-        v-show="verProductos"
-        @close="verProductosClick"
-        :numOrder="this.numOrden"
-        ref="myComponent"
-      ></BusquedaProducto>
-    </transition>
-
-    <transition name="fade">
-      <BusquedaClientes
-        v-show="verClientes"
-        @close="verClientesClick"
-        :numOrder="this.numOrden"
-      ></BusquedaClientes>
-    </transition>
-
-    <transition name="fade">
-      <BaseModal
-        :total="total"
-        v-show="popup"
-        @close="toglePopUP()"
-        @comprar="finalizar()"
-      />
-    </transition>
-
-    <div class="">
-      <div class="col-1 ms-5">Orden #{{ numOrden }}</div>
-    </div>
-
-    <div class="row table-header pb-3">
-      <div class="col-3">Id: {{ customer._id }}</div>
-      <div class="col-3">Nombre: {{ customer.name }}</div>
-      <div class="col-3">Email:{{ customer.email }}</div>
-      <button class="col-3 btn btn-success" @click="verClientesClick">
-        Buscar cliente
-      </button>
-    </div>
-
-    <div class="row table-header">
-      <div class="col-3">Nombre</div>
-      <div class="col-3 text-end">Cantidad</div>
-      <div class="col-3 text-end">Precio</div>
-      <div class="col-3 text-end">
-        <button class="btn btn-success" @click="verProductosClick">
-          Agregar Producto +
-        </button>
+    <section class="panel controls">
+      <div class="field">
+        <label for="customer">Cliente</label>
+        <select id="customer" v-model.number="selectedCustomerId">
+          <option :value="0">Selecciona un cliente</option>
+          <option v-for="customer in customers" :key="customer.id" :value="customer.id">
+            {{ customerDisplayName(customer) }} - {{ customer.identification }}
+          </option>
+        </select>
       </div>
-    </div>
 
-    <div
-      class="row m-2 pt-2 rounded-corner"
-      v-for="product in products"
-      :key="product._id"
-      style="background-color: #d9d9d9"
-    >
-      <div class="col-3 text-start">{{ product.name }}</div>
-      <div class="col-3 text-end">
-        <span v-if="!product.editMode">{{ product.quantity }}</span>
+      <div class="field">
+        <label for="product-search">Buscar producto</label>
         <input
-          v-else
-          type="number"
-          v-model="product.editQuantity"
-          min="0"
-          step="1"
-          required
+          id="product-search"
+          v-model="productSearch"
+          type="search"
+          placeholder="Nombre o SKU"
         />
       </div>
-      <div class="col-3 text-end">{{ product.unitPrice }}</div>
-      <div class="col-3 mb-2">
-        <button
-          class="btn btn-outline-danger me-2"
-          @click="deleteProduct(product)"
-        >
-          Eliminar
-        </button>
-        <button class="btn btn-outline-dark" @click="editProduct(product)">
-          Editar
-        </button>
-        <button
-          class="btn btn-success"
-          @click="saveProduct(product)"
-          v-if="product.editMode"
-        >
-          Guardar
-        </button>
-        <button
-          class="btn btn-danger"
-          @click="cancelEdit(product)"
-          v-if="product.editMode"
-        >
-          Cancelar
+    </section>
+
+    <section class="panel">
+      <h2>Productos</h2>
+      <div class="products-grid">
+        <article v-for="product in filteredProducts" :key="product.id" class="product-card">
+          <div>
+            <strong>{{ product.name }}</strong>
+            <p>SKU: {{ product.sku }}</p>
+            <p>Precio: {{ formatMoney(product.price) }}</p>
+            <p>Stock: {{ product.stock }}</p>
+          </div>
+          <button :disabled="product.stock <= 0 || !product.isActive" @click="addProduct(product)">
+            Agregar
+          </button>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Detalle</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio</th>
+            <th>Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in cart" :key="item.productId">
+            <td>{{ item.name }}</td>
+            <td>
+              <input
+                :value="item.quantity"
+                type="number"
+                min="1"
+                :max="item.maxStock"
+                @input="updateQuantity(item.productId, $event)"
+              />
+            </td>
+            <td>{{ formatMoney(item.unitPrice) }}</td>
+            <td>{{ formatMoney(item.unitPrice * item.quantity) }}</td>
+            <td>
+              <button class="ghost" @click="removeItem(item.productId)">Quitar</button>
+            </td>
+          </tr>
+          <tr v-if="cart.length === 0">
+            <td colspan="5" class="empty">No hay productos agregados</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <strong>Total estimado: {{ formatMoney(totalAmount) }}</strong>
+        <button :disabled="!canCreateInvoice" @click="createInvoice">
+          {{ creating ? "Emitiendo..." : "Emitir factura" }}
         </button>
       </div>
-    </div>
 
-    <div class="col-9 container d-flex align-items-center justify-content-end">
-      <p class="text-primary">Total: {{ total.toFixed(2) + " $" }}</p>
-      <button class="btn btn-primary ms-5" @click="toglePopUP()">
-        Finalizar
-      </button>
-    </div>
-  </div>
+      <p v-if="successMessage" class="ok">{{ successMessage }}</p>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    </section>
+  </section>
 </template>
 
-<script>
-import BaseModal from "@/shared/components/BaseModal.vue";
-import BusquedaProducto from "@/modules/productos/components/ProductsSearch.vue";
-import BusquedaClientes from "@/modules/clientes/components/ClientsList.vue";
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { isAxiosError } from "axios";
+import { httpClient } from "@/shared/http/client";
 
-export default {
-  components: {
-    BaseModal,
-    BusquedaProducto,
-    BusquedaClientes,
-  },
-  data() {
-    return {
-      products: [],
-      baseUrl: "http://localhost:3000",
-      total: 0,
-      order: { orderID: 0 },
-      popup: false,
-      verProductos: false,
-      verClientes: false,
-      numOrden: 0,
-      customer: { _id: "No elegido", name: "No elegido", email: "No elegido" },
-    };
-  },
-  created() {
-    this.getNumOrder();
-  },
-  methods: {
-    async getNumOrder() {
-      let lastOrder = (await this.axios.get(`${this.baseUrl}/lastOrder`)).data;
-      if (lastOrder == null || lastOrder[0].cerrada) {
-        this.numOrden = lastOrder[0].orderID + 1;
-      } else {
-        this.numOrden = lastOrder[0].orderID;
-      }
-      this.order = (
-        await this.axios.get(`${this.baseUrl}/order/${this.numOrden}`)
-      ).data;
-
-      if (this.order == null) {
-        this.order = { orderID: 0 };
-      }
-      this.getProducts();
-    },
-    async finalizar() {
-      if (this.order.customerID && this.products.length != 0) {
-        this.order.cerrada = true;
-        await this.axios.put(
-          `${this.baseUrl}/orderUpdate/${this.order.orderID}`,
-          this.order
-        );
-        this.popup = !this.popup;
-        this.products = [];
-        this.customer = {
-          _id: "No elegido",
-          name: "No elegido",
-          email: "No elegido",
-        };
-        this.getNumOrder();
-      } else {
-        alert("No ha selecionado ningun cliente o ningun producto");
-      }
-    },
-    toglePopUP() {
-      this.popup = !this.popup;
-    },
-    async verProductosClick() {
-      this.verProductos = !this.verProductos;
-      this.products = [];
-      await this.getNumOrder();
-
-      this.$refs.myComponent.getProducts();
-    },
-    async verClientesClick() {
-      this.products = [];
-      await this.getNumOrder();
-      this.verClientes = !this.verClientes;
-    },
-    async getProducts() {
-      this.total = 0;
-      if (this.order.orderID != 0) {
-        const details = (
-          await this.axios.get(
-            `${this.baseUrl}/orderDetails/${this.order.orderID}`
-          )
-        ).data;
-
-        for (let index = 0; index < details.length; index++) {
-          const producto = (
-            await this.axios.get(
-              `${this.baseUrl}/product/${details[index].productID}`
-            )
-          ).data;
-          this.products.push({
-            productID: producto[0].productID,
-            name: producto[0].name,
-            quantity: details[index].quantity,
-            unitPrice: producto[0].unitPrice + " $",
-          });
-
-          this.total += producto[0].unitPrice * details[index].quantity;
-        }
-
-        if (this.order.customerID) {
-          this.customer = (
-            await this.axios.get(
-              `${this.baseUrl}/customer/${this.order.customerID}`
-            )
-          ).data;
-        }
-      } else {
-        //si no hay una orden con el numero de orden crea una nueva
-        let order = {
-          orderID: this.numOrden,
-          cerrada: false, //lo creo sin customerID por que luego lo agrego.
-        };
-        const openOrder = await this.axios.post(
-          `${this.baseUrl}/openOrder`,
-          order
-        );
-        if (openOrder.status === 200) {
-          console.log("Orden abierta");
-        } else {
-          console.error("No se ha podido abrir la orden");
-        }
-      }
-    },
-    editProduct(product) {
-      // Activa el modo de edición para el producto
-      product.editMode = true;
-      // Guarda la cantidad actual para poder restaurarla en caso de cancelación
-      product.editQuantity = product.quantity;
-    },
-    async saveProduct(product) {
-      if (
-        isNaN(product.editQuantity) ||
-        product.editQuantity <= 0 ||
-        product.editQuantity % 1 != 0
-      ) {
-        alert("Ingresa una cantidad válida para agregar al carrito.");
-        return;
-      }
-
-      let productoB = (
-        await this.axios(`${this.baseUrl}/product/${product.productID}`)
-      ).data;
-
-      if (productoB[0].unitStock == 0) {
-        if (product.quantity < product.editQuantity) {
-          alert("Bajo stock");
-          return;
-        }
-      } else if (
-        productoB[0].unitStock + product.quantity <
-        product.editQuantity
-      ) {
-        alert("Bajo stock");
-        return;
-      }
-
-      let editQuantity = (
-        await this.axios.get(`${this.baseUrl}/product/${product.productID}`)
-      ).data;
-      if (product.quantity < product.editQuantity)
-        editQuantity[0].unitStock -= Math.abs(
-          product.quantity - product.editQuantity
-        );
-      else
-        editQuantity[0].unitStock += Math.abs(
-          product.quantity - product.editQuantity
-        );
-      await this.axios.put(
-        `${this.baseUrl}/productUpdate/${product.productID}`,
-        editQuantity[0]
-      );
-
-      const detailsUpdate = {
-        orderID: this.order.orderID,
-        productID: product.productID,
-        unitPrice: product.unitPrice.replace("$", ""),
-        quantity: product.editQuantity,
-      };
-      await this.axios.put(
-        `${this.baseUrl}/detailsUpdate/${product.productID}/${this.order.orderID}`,
-        detailsUpdate
-      );
-
-      // Guarda la nueva cantidad y desactiva el modo de edición
-      product.quantity = product.editQuantity;
-      product.editMode = false;
-      this.products = [];
-      await this.getNumOrder();
-    },
-    cancelEdit(product) {
-      // Cancela la edición y restaura la cantidad original
-      product.editQuantity = product.quantity;
-      product.editMode = false;
-    },
-    async deleteProduct(product) {
-      let editQuantity = (
-        await this.axios.get(`${this.baseUrl}/product/${product.productID}`)
-      ).data;
-      editQuantity[0].unitStock += product.quantity;
-      await this.axios.put(
-        `${this.baseUrl}/productUpdate/${product.productID}`,
-        editQuantity[0]
-      );
-
-      await this.axios.delete(
-        `${this.baseUrl}/orderDetailsDelete/${product.productID}`
-      );
-
-      this.products = [];
-      await this.getProducts();
-    },
-  },
+type Product = {
+  id: number;
+  sku: string;
+  name: string;
+  price: number | string;
+  stock: number;
+  isActive: boolean;
 };
+
+type Customer = {
+  id: number;
+  fullName: string | null;
+  businessName: string | null;
+  identification: string;
+};
+
+type CartItem = {
+  productId: number;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  maxStock: number;
+};
+
+type CreatedInvoice = {
+  invoiceNumber: string;
+};
+
+const products = ref<Product[]>([]);
+const customers = ref<Customer[]>([]);
+const cart = ref<CartItem[]>([]);
+const selectedCustomerId = ref(0);
+const productSearch = ref("");
+const creating = ref(false);
+const successMessage = ref("");
+const errorMessage = ref("");
+
+const filteredProducts = computed(() => {
+  const term = productSearch.value.trim().toLowerCase();
+  if (!term) return products.value;
+
+  return products.value.filter(
+    (product) =>
+      product.name.toLowerCase().includes(term) || product.sku.toLowerCase().includes(term)
+  );
+});
+
+const totalAmount = computed(() =>
+  cart.value.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0)
+);
+
+const canCreateInvoice = computed(
+  () => selectedCustomerId.value > 0 && cart.value.length > 0 && !creating.value
+);
+
+const customerDisplayName = (customer: Customer) =>
+  customer.fullName || customer.businessName || "Sin nombre";
+
+const parsePrice = (value: number | string) => Number(value);
+
+const formatMoney = (value: number | string) =>
+  new Intl.NumberFormat("es-EC", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+
+const fetchBaseData = async () => {
+  const [productsResponse, customersResponse] = await Promise.all([
+    httpClient.get<Product[]>("/products"),
+    httpClient.get<Customer[]>("/customers"),
+  ]);
+
+  products.value = productsResponse.data;
+  customers.value = customersResponse.data;
+};
+
+const addProduct = (product: Product) => {
+  const existing = cart.value.find((item) => item.productId === product.id);
+  if (existing) {
+    if (existing.quantity < existing.maxStock) {
+      existing.quantity += 1;
+    }
+    return;
+  }
+
+  cart.value.push({
+    productId: product.id,
+    name: product.name,
+    unitPrice: parsePrice(product.price),
+    quantity: 1,
+    maxStock: product.stock,
+  });
+};
+
+const updateQuantity = (productId: number, event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const item = cart.value.find((entry) => entry.productId === productId);
+  if (!item) return;
+
+  const requested = Number(target.value);
+  if (!Number.isFinite(requested) || requested < 1) {
+    item.quantity = 1;
+    return;
+  }
+
+  item.quantity = Math.min(requested, item.maxStock);
+};
+
+const removeItem = (productId: number) => {
+  cart.value = cart.value.filter((item) => item.productId !== productId);
+};
+
+const createInvoice = async () => {
+  if (!canCreateInvoice.value) return;
+
+  creating.value = true;
+  successMessage.value = "";
+  errorMessage.value = "";
+
+  try {
+    const payload = {
+      customerId: selectedCustomerId.value,
+      items: cart.value.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+    };
+
+    const { data } = await httpClient.post<CreatedInvoice>("/invoices", payload);
+    successMessage.value = `Factura ${data.invoiceNumber} creada correctamente.`;
+    selectedCustomerId.value = 0;
+    cart.value = [];
+    await fetchBaseData();
+  } catch (error) {
+    if (isAxiosError(error)) {
+      errorMessage.value =
+        (error.response?.data as { message?: string } | undefined)?.message ||
+        "No se pudo crear la factura.";
+    } else {
+      errorMessage.value = "No se pudo crear la factura.";
+    }
+  } finally {
+    creating.value = false;
+  }
+};
+
+onMounted(async () => {
+  try {
+    await fetchBaseData();
+  } catch {
+    errorMessage.value = "No se pudo cargar clientes y productos.";
+  }
+});
 </script>
 
 <style scoped>
-/* Define las clases CSS para el campo de búsqueda */
-.rounded-corner {
-  border-radius: 15px; /* Ajusta el valor según tus preferencias */
+.invoice-builder {
+  display: grid;
+  gap: 16px;
+}
+
+.panel {
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+  text-align: left;
+}
+
+.panel h1,
+.panel h2,
+.panel p {
+  margin: 0;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+select,
+input,
+button {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.products-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.product-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.product-card p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px;
+}
+
+.empty {
+  color: #64748b;
+  text-align: center;
+}
+
+.summary {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ghost {
+  background: transparent;
+}
+
+.ok {
+  margin: 10px 0 0;
+  color: #166534;
+}
+
+.error {
+  margin: 10px 0 0;
+  color: #b91c1c;
+}
+
+@media (max-width: 920px) {
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
-

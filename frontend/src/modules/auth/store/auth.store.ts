@@ -40,20 +40,14 @@ export const useAuthStore = defineStore("auth", {
       this.setSession(session);
     },
     async bootstrapSession() {
-      if (!this.accessToken) {
-        return;
-      }
-
-      if (!this.user) {
-        const user = await authService.me(this.accessToken);
-        if (user) {
-          this.user = user;
-          localStorage.setItem(USER_KEY, JSON.stringify(user));
-        }
+      // Backend currently does not expose /auth/me. If persisted user metadata
+      // is missing, force logout to avoid a broken partially-authenticated state.
+      if (this.accessToken && !this.user) {
+        this.logout();
       }
     },
     async tryRefreshToken() {
-      if (!this.refreshToken) {
+      if (!this.refreshToken || !this.user) {
         return false;
       }
 
@@ -63,7 +57,11 @@ export const useAuthStore = defineStore("auth", {
         return false;
       }
 
-      this.setSession(refreshed);
+      this.setSession({
+        accessToken: refreshed.accessToken,
+        refreshToken: refreshed.refreshToken ?? this.refreshToken,
+        user: this.user,
+      });
       return true;
     },
     logout() {

@@ -67,7 +67,7 @@ type NavItem = {
   name: string;
   label: string;
   to: string;
-  roles: Array<"admin" | "cashier">;
+  roles: Array<"admin" | "empleado" | "lector">;
 };
 
 const STORAGE_KEY = "sf_sidebar_collapsed";
@@ -80,17 +80,22 @@ const isCollapsed = ref(localStorage.getItem(STORAGE_KEY) === "1");
 
 const navItems: NavItem[] = [
   { name: "dashboard", label: "Dashboard", to: "/dashboard", roles: ["admin"] },
-  { name: "inicio", label: "Nueva factura", to: "/inicio", roles: ["admin", "cashier"] },
-  { name: "productsSearch", label: "Productos", to: "/productsSearch", roles: ["admin", "cashier"] },
-  { name: "clientsSearch", label: "Clientes", to: "/clientsSearch", roles: ["admin", "cashier"] },
-  { name: "facturas", label: "Facturas", to: "/facturas", roles: ["admin"] },
+  { name: "inicio", label: "Nueva factura", to: "/inicio", roles: ["admin", "empleado"] },
+  { name: "productsSearch", label: "Productos", to: "/productsSearch", roles: ["admin", "empleado", "lector"] },
+  { name: "clientsSearch", label: "Clientes", to: "/clientsSearch", roles: ["admin", "empleado", "lector"] },
+  { name: "facturas", label: "Facturas", to: "/facturas", roles: ["admin", "empleado", "lector"] },
 ];
 
 const visibleItems = computed(() =>
   navItems.filter((item) => item.roles.some((role) => authStore.roles.includes(role)))
 );
 
-const roleLabel = computed(() => (authStore.roles.includes("admin") ? "Administrador" : "Cajero"));
+const roleLabel = computed(() => {
+  if (authStore.roles.includes("admin")) return "Administrador";
+  if (authStore.roles.includes("empleado")) return "Empleado";
+  if (authStore.roles.includes("lector")) return "Lector";
+  return "Sin rol";
+});
 const primaryActionLabel = computed(() => (authStore.roles.includes("admin") ? "Ver indicadores" : "Nueva factura"));
 
 const toggleCollapse = () => {
@@ -99,7 +104,17 @@ const toggleCollapse = () => {
 };
 
 const goPrimaryAction = async () => {
-  await router.push(authStore.roles.includes("admin") ? "/dashboard" : "/inicio");
+  if (authStore.roles.includes("admin")) {
+    await router.push("/dashboard");
+    return;
+  }
+
+  if (authStore.roles.includes("empleado")) {
+    await router.push("/inicio");
+    return;
+  }
+
+  await router.push("/facturas");
 };
 
 const logout = async () => {

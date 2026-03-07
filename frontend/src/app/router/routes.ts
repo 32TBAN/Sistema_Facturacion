@@ -26,7 +26,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/modules/productos/pages/ProductosPage.vue"),
     meta: {
       requiresAuth: true,
-      roles: ["admin", "cashier"],
+      roles: ["admin", "empleado"],
       layout: "app",
     },
   },
@@ -36,7 +36,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/modules/productos/pages/ProductsSearchPage.vue"),
     meta: {
       requiresAuth: true,
-      roles: ["admin", "cashier"],
+      roles: ["admin", "empleado", "lector"],
       layout: "app",
     },
   },
@@ -46,7 +46,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/modules/clientes/pages/ClientesPage.vue"),
     meta: {
       requiresAuth: true,
-      roles: ["admin", "cashier"],
+      roles: ["admin", "empleado", "lector"],
       layout: "app",
     },
   },
@@ -56,7 +56,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/modules/facturas/pages/FacturasPage.vue"),
     meta: {
       requiresAuth: true,
-      roles: ["admin"],
+      roles: ["admin", "empleado", "lector"],
       layout: "app",
     },
   },

@@ -22,9 +22,9 @@
 
       <form class="login-form" @submit="onSubmit">
         <div class="form-group">
-          <label for="username">Usuario</label>
-          <input id="username" v-model="username" type="text" autocomplete="username" />
-          <small v-if="errors.username">{{ errors.username }}</small>
+          <label for="email">Correo</label>
+          <input id="email" v-model="email" type="email" autocomplete="username" />
+          <small v-if="errors.email">{{ errors.email }}</small>
         </div>
 
         <div class="form-group">
@@ -41,8 +41,7 @@
       </form>
 
       <footer class="login-footer">
-        <p>Demo admin: <code>admin / admin</code></p>
-        <p>Demo cajero: <code>cajero / cajero</code></p>
+        <p>Demo admin: <code>admin@demo.com / Admin1234</code></p>
       </footer>
     </div>
   </section>
@@ -62,19 +61,19 @@ const router = useRouter();
 const errorMessage = ref("");
 
 const loginSchema = z.object({
-  username: z.string().min(1, "El usuario es obligatorio"),
+  email: z.string().email("Ingresa un correo valido"),
   password: z.string().min(1, "La contrasena es obligatoria"),
 });
 
 const { handleSubmit, defineField, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(loginSchema),
   initialValues: {
-    username: "",
+    email: "",
     password: "",
   },
 });
 
-const [username] = defineField("username");
+const [email] = defineField("email");
 const [password] = defineField("password");
 
 const onSubmit = handleSubmit(async (values) => {
