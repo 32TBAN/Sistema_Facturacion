@@ -22,14 +22,40 @@
 
       <form class="login-form" @submit="onSubmit">
         <div class="form-group">
-          <label for="username">Usuario</label>
-          <input id="username" v-model="username" type="text" autocomplete="username" />
-          <small v-if="errors.username">{{ errors.username }}</small>
+          <label for="email">Correo</label>
+          <div class="input-wrap">
+            <font-awesome-icon class="input-icon" :icon="['fas', 'envelope']" aria-hidden="true" />
+            <input
+              id="email"
+              v-model="email"
+              type="email"
+              autocomplete="username"
+              placeholder="admin@demo.com"
+            />
+          </div>
+          <small v-if="errors.email">{{ errors.email }}</small>
         </div>
 
         <div class="form-group">
           <label for="password">Contrasena</label>
-          <input id="password" v-model="password" type="password" autocomplete="current-password" />
+          <div class="input-wrap">
+            <font-awesome-icon class="input-icon" :icon="['fas', 'lock']" aria-hidden="true" />
+            <input
+              id="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="Ingresa tu contrasena"
+            />
+            <button
+              type="button"
+              class="toggle-password"
+              :aria-label="showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              @click="showPassword = !showPassword"
+            >
+              <font-awesome-icon :icon="['fas', showPassword ? 'eye-slash' : 'eye']" />
+            </button>
+          </div>
           <small v-if="errors.password">{{ errors.password }}</small>
         </div>
 
@@ -41,8 +67,7 @@
       </form>
 
       <footer class="login-footer">
-        <p>Demo admin: <code>admin / admin</code></p>
-        <p>Demo cajero: <code>cajero / cajero</code></p>
+        <p>Demo admin: <code>admin@demo.com / Admin1234</code></p>
       </footer>
     </div>
   </section>
@@ -60,25 +85,27 @@ import { Button } from "@/shared/ui/button";
 const authStore = useAuthStore();
 const router = useRouter();
 const errorMessage = ref("");
+const showPassword = ref(false);
 
 const loginSchema = z.object({
-  username: z.string().min(1, "El usuario es obligatorio"),
+  email: z.string().email("Ingresa un correo valido"),
   password: z.string().min(1, "La contrasena es obligatoria"),
 });
 
 const { handleSubmit, defineField, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(loginSchema),
   initialValues: {
-    username: "",
+    email: "",
     password: "",
   },
 });
 
-const [username] = defineField("username");
+const [email] = defineField("email");
 const [password] = defineField("password");
 
 const onSubmit = handleSubmit(async (values) => {
   try {
+    // console.log("Intentando iniciar sesion con:", values);
     errorMessage.value = "";
     await authStore.login(values);
 
@@ -173,11 +200,41 @@ const onSubmit = handleSubmit(async (values) => {
   font-size: 0.92rem;
 }
 
+.input-wrap {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
 .form-group input {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  padding: 11px 12px;
+  padding: 11px 12px 11px 34px;
   background: #ffffff;
+  width: 100%;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+}
+
+#password {
+  padding-right: 40px;
 }
 
 .form-group small,

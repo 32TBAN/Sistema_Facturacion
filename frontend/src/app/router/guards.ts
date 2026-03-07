@@ -14,6 +14,14 @@ function resolveHomeByRole(roles: string[]) {
     return { name: "dashboard" };
   }
 
+  if (roles.includes("empleado")) {
+    return { name: "inicio" };
+  }
+
+  if (roles.includes("lector")) {
+    return { name: "facturas" };
+  }
+
   return { name: "inicio" };
 }
 

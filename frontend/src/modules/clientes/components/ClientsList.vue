@@ -1,277 +1,574 @@
 <template>
-  <div class="pop-up">
-    <div class="pop-up-close" @click="close()">&times;</div>
-    <h4 class="pb-1">Buscar cliente</h4>
+  <section class="customers-page">
+    <header class="panel header-panel">
+      <div>
+        <h2>
+          <font-awesome-icon :icon="['fas', 'users']" />
+          Clientes
+        </h2>
+      </div>
+      <button v-if="canMutateCustomer" class="primary" @click="openCreateModal">
+        <font-awesome-icon :icon="['fas', 'user-plus']" />
+        Crear cliente
+      </button>
+    </header>
 
-    <div class="container d-flex flex-column align-items-center">
-      <form class="d-flex me-2 mb-3">
-        <input
-          class="form-control"
-          type="search"
-          placeholder="Ingrese un valor"
-          aria-label="Search"
-          v-model="nameSearch"
-          @input="searchByTags"
-        />
-      </form>
+    <section class="panel">
+      <div class="field">
+        <label for="search">
+          <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
+          Buscar por nombre o identificacion
+        </label>
+        <input id="search" v-model="search" type="search" placeholder="Ej: 0912345678 o Maria" />
+      </div>
+      <p class="meta">
+        <font-awesome-icon :icon="['fas', 'database']" />
+        {{ filteredCustomers.length }} resultado(s)
+      </p>
+    </section>
 
-      <div class="d-flex flex-column align-items-center" ref="tagsContainer">
-        <p
-          class="bg-body-tertiary rounded-corner black-border p-1"
-          @click="toggleArrowIcon"
-        >
-          Tags
-          <font-awesome-icon
-            :icon="isArrowUp ? 'chevron-up' : 'chevron-down'"
-          />
-        </p>
+    <section class="panel table-panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><span class="th-content"><font-awesome-icon :icon="['fas', 'hashtag']" /> ID</span></th>
+              <th><span class="th-content"><font-awesome-icon :icon="['fas', 'user']" /> Nombre</span></th>
+              <th>
+                <span class="th-content"><font-awesome-icon :icon="['fas', 'id-card']" /> Identificacion</span>
+              </th>
+              <th><span class="th-content"><font-awesome-icon :icon="['fas', 'envelope']" /> Email</span></th>
+              <th><span class="th-content"><font-awesome-icon :icon="['fas', 'phone']" /> Telefono</span></th>
+              <th v-if="canMutateCustomer">
+                <span class="th-content"><font-awesome-icon :icon="['fas', 'wrench']" /> Acciones</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="customer in filteredCustomers" :key="customer.id">
+              <td>{{ customer.id }}</td>
+              <td>{{ displayName(customer) }}</td>
+              <td>{{ customer.identification }}</td>
+              <td>{{ customer.email || "-" }}</td>
+              <td>{{ customer.phone || "-" }}</td>
+              <td v-if="canMutateCustomer">
+                <button class="ghost" @click="openEditModal(customer)">
+                  <font-awesome-icon :icon="['fas', 'pen']" />
+                  Editar
+                </button>
+              </td>
+            </tr>
+            <tr v-if="filteredCustomers.length === 0">
+              <td :colspan="canMutateCustomer ? 6 : 5" class="empty">No hay clientes para mostrar</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-        <div v-if="showTags" class="tags-container">
-          <!-- Contenido de etiquetas -->
-          <div v-for="tag in allTags" v-bind:key="tag">
-            <input
-              type="checkbox"
-              :id="tag"
-              :value="tag"
-              v-model="searchTags"
-              @change="searchByTags"
-            />
-            <label class="p-2" :for="tag">{{ tag }}</label>
+    <p v-if="errorMessage" class="error">
+      <font-awesome-icon :icon="['fas', 'triangle-exclamation']" />
+      {{ errorMessage }}
+    </p>
+    <p v-if="successMessage" class="ok">
+      <font-awesome-icon :icon="['fas', 'circle-check']" />
+      {{ successMessage }}
+    </p>
+
+    <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
+      <section class="modal-card">
+        <header>
+          <h3>
+            <font-awesome-icon :icon="['fas', editMode ? 'pen' : 'address-card']" />
+            {{ editMode ? "Editar cliente" : "Crear cliente" }}
+          </h3>
+          <button class="ghost icon-only" @click="closeModal" aria-label="Cerrar">
+            <font-awesome-icon :icon="['fas', 'xmark']" />
+          </button>
+        </header>
+
+        <div class="modal-grid">
+          <div class="field">
+            <label for="new-identification">
+              <font-awesome-icon :icon="['fas', 'id-card']" />
+              Identificacion
+            </label>
+            <input id="new-identification" v-model="form.identification" type="text" maxlength="10" />
+            <small :class="['validation', identificationStatus]">
+              <font-awesome-icon :icon="['fas', statusIcon(identificationStatus)]" />
+              {{ identificationMessage }}
+            </small>
+          </div>
+
+          <div class="field">
+            <label for="new-fullname">
+              <font-awesome-icon :icon="['fas', 'user']" />
+              Nombre completo
+            </label>
+            <input id="new-fullname" v-model="form.fullName" type="text" />
+            <small :class="['validation', fullNameStatus]">
+              <font-awesome-icon :icon="['fas', statusIcon(fullNameStatus)]" />
+              {{ fullNameMessage }}
+            </small>
+          </div>
+
+          <div class="field">
+            <label for="new-email">
+              <font-awesome-icon :icon="['fas', 'envelope']" />
+              Email (opcional)
+            </label>
+            <input id="new-email" v-model="form.email" type="email" />
+            <small :class="['validation', emailStatus]">
+              <font-awesome-icon :icon="['fas', statusIcon(emailStatus)]" />
+              {{ emailMessage }}
+            </small>
+          </div>
+
+          <div class="field">
+            <label for="new-phone">
+              <font-awesome-icon :icon="['fas', 'phone']" />
+              Telefono (opcional)
+            </label>
+            <input id="new-phone" v-model="form.phone" type="text" />
+            <small :class="['validation', phoneStatus]">
+              <font-awesome-icon :icon="['fas', statusIcon(phoneStatus)]" />
+              {{ phoneMessage }}
+            </small>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="container mt-1 bg-white p-3">
-      <div class="row table-header pb-3">
-        <div class="col-3">id</div>
-        <div class="col-3">Nombre</div>
-        <div class="col-3">Email</div>
-        <div class="col-3">Ciudad</div>
-      </div>
 
-      <div
-        class="row m-2 p-3 rounded-corner"
-        v-for="customer in displayCustomers"
-        :key="customer._id"
-        style="background-color: #d9d9d9; cursor: pointer;"
-        @click="addClient(customer)"
-      >
-        <div class="col-3">{{ customer._id }}</div>
-        <div class="col-3">{{ customer.name }}</div>
-        <div class="col-3">{{ customer.email }}</div>
-        <div class="col-3">{{ customer.country }}</div>
-      </div>
+        <p v-if="modalErrorMessage" class="error">
+          <font-awesome-icon :icon="['fas', 'triangle-exclamation']" />
+          {{ modalErrorMessage }}
+        </p>
 
-      <div class="btn-group col-md-2 off-set-md-5">
-        <button
-          type="button"
-          v-if="page != 1"
-          @click="page--"
-          class="btn btn-sm btn-outline-secondary"
-        >
-          Before
-        </button>
-        <button
-          type="button"
-          v-for="pageNumber in pages.slice(page - 1, page + 2)"
-          v-bind:key="pageNumber"
-          class="btn btn-sm btn-outline-secondary"
-          @click="page = pageNumber"
-        >
-          {{ pageNumber }}
-        </button>
-        <button
-          type="button"
-          @click="page++"
-          v-if="page < pages.length"
-          class="btn btn-sm btn-outline-secondary"
-        >
-          Next
-        </button>
-      </div>
+        <footer>
+          <button class="ghost" @click="closeModal">
+            <font-awesome-icon :icon="['fas', 'xmark']" />
+            Cancelar
+          </button>
+          <button class="primary" :disabled="saving || !isFormValid" @click="saveCustomer">
+            <font-awesome-icon :icon="['fas', 'floppy-disk']" />
+            {{ saving ? "Guardando..." : editMode ? "Guardar cambios" : "Guardar cliente" }}
+          </button>
+        </footer>
+      </section>
     </div>
-  </div>
+  </section>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      customers: [],
-      allTags: ["id", "nombre", "email", "pais"],
-      isArrowUp: false,
-      showTags: false,
-      baseUrl: "http://localhost:3000",
-      page: 1,
-      perPage: 5,
-      pages: [],
-      nameSearch: "",
-      searchTags: [],
-      originalCustomers: [],
-      customer: 0
-    };
-  },
-  created() {
-    this.getCustomers();
-    window.addEventListener("click", this.handleClickOutside);
-  },props:{
-        numOrder: Number
-    },
-  methods: {
-    close() {
-      this.$emit("close");
-    },
-    searchByTags() {
-      // Filtrar productos por etiquetas seleccionadas
-      let filteredCustomers = [...this.originalCustomers];
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref } from "vue";
+import { isAxiosError } from "axios";
+import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { httpClient } from "@/shared/http/client";
 
-      if (this.searchTags.length > 0) {
-        // Filtra por etiquetas seleccionadas
-        filteredCustomers = this.customers.filter((customer) => {
-          return this.searchTags.includes("id")
-            ? customer._id.includes(this.nameSearch)
-            : false || this.searchTags.includes("nombre")
-            ? customer.name
-                .toLowerCase()
-                .includes(this.nameSearch.toLowerCase())
-            : false || this.searchTags.includes("email")
-            ? customer.email
-                .toLowerCase()
-                .includes(this.nameSearch.toLowerCase())
-            : false || this.searchTags.includes("pais")
-            ? customer.country
-                .toLowerCase()
-                .includes(this.nameSearch.toLowerCase())
-            : false;
-        });
-      }
-
-      // Si no se han seleccionado etiquetas, realiza la búsqueda por nombre de forma predeterminada
-      if (this.nameSearch && this.searchTags.length === 0) {
-        filteredCustomers = this.originalCustomers.filter((customer) => {
-          return customer.name
-            .toLowerCase()
-            .includes(this.nameSearch.toLowerCase());
-        });
-      }
-
-      this.customers = filteredCustomers;
-
-      if (this.customers.length === 0) {
-        // Si no se encuentran resultados, restaura la lista original
-        this.customers = [...this.originalCustomers];
-      }
-    },
-    toggleArrowIcon() {
-      this.showTags = !this.showTags;
-      this.isArrowUp = !this.isArrowUp;
-    },
-    async getCustomers() {
-      const res = await this.axios.get(`${this.baseUrl}/customers`);
-      this.customers = res.data;
-      // Copia la lista original al cargar
-      this.originalCustomers = [...this.customers];
-      this.customers.sort((a, b) => b.name - a.name);
-    },
-    paginate(customersE) {
-      let page = this.page;
-      let perPage = this.perPage;
-      let from = page * perPage - perPage;
-      let to = page * perPage;
-      return customersE.slice(from, to);
-    },
-    setCustomers() {
-      let numberOfPages = Math.ceil(this.customers.length / this.perPage);
-      for (let index = 1; index < +numberOfPages; index++) {
-        this.pages.push(index);
-      }
-    },
-    handleClickOutside(event) {
-      // Verificar si el clic no ocurrió dentro de las etiquetas
-      const tagsContainer = this.$refs.tagsContainer; // Añade una referencia a las etiquetas en tu plantilla
-      if (tagsContainer && !tagsContainer.contains(event.target)) {
-        // Cerrar las etiquetas
-        this.showTags = false;
-        this.isArrowUp = false;
-      }
-    },
-    async addClient(customer){
-      
-      let order = (await this.axios.get(`${this.baseUrl}/order/${this.numOrder}`)).data
-
-      await this.axios.put(`${this.baseUrl}/orderUpdate/${this.numOrder}`,{
-        orderID: order.orderID,
-        customerID: customer._id,
-        cerrada: false
-      })
-
-      this.close()
-    }
-  },
-  computed: {
-    displayCustomers() {
-      return this.paginate(this.customers);
-    },
-  },
-  watch: {
-    customers: "setCustomers",
-  },
+type Customer = {
+  id: number;
+  fullName: string | null;
+  businessName: string | null;
+  identification: string;
+  email: string | null;
+  phone: string | null;
 };
-</script>
 
-<style lang="scss">
-.tags-container {
-  border: 1px solid #ccc;
-  background-color: white;
-  padding: 10px;
-  border-radius: 4px;
-  position: absolute;
-}
+type ValidationStatus = "pending" | "valid" | "invalid";
 
-.rounded-corner {
-  border-radius: 15px; /* Ajusta el valor según tus preferencias */
-}
+const authStore = useAuthStore();
+const canMutateCustomer = computed(
+  () => authStore.roles.includes("admin") || authStore.roles.includes("empleado")
+);
 
-.black-border {
-  border: 2px solid black; /* Cambia el color del borde según tus preferencias */
-}
+const customers = ref<Customer[]>([]);
+const search = ref("");
+const errorMessage = ref("");
+const successMessage = ref("");
 
-.pop-up {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  padding: 32px 16px 120px;
-  height: 100vh;
-  widows: 100%;
-  background-color: #52a07ed5;
-  display: grid;
-  place-items: center;
+const showModal = ref(false);
+const saving = ref(false);
+const editMode = ref(false);
+const editingCustomerId = ref<number | null>(null);
+const modalErrorMessage = ref("");
 
-  &-close {
-    position: absolute;
-    height: 52px;
-    widows: 52px;
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    top: 0;
-    right: 0;
-    font-size: 3rem;
-    color: #d6d6d6;
-    cursor: pointer;
+const form = reactive({
+  identification: "",
+  fullName: "",
+  email: "",
+  phone: "",
+});
+
+const displayName = (customer: Customer) =>
+  customer.fullName || customer.businessName || "Sin nombre";
+
+const filteredCustomers = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  if (!term) return customers.value;
+
+  return customers.value.filter((customer) => {
+    const name = displayName(customer).toLowerCase();
+    return name.includes(term) || customer.identification.toLowerCase().includes(term);
+  });
+});
+
+const digitsOnly = (value: string) => value.replace(/\D/g, "");
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isValidEcuadorCedula = (value: string) => {
+  const cedula = digitsOnly(value);
+  if (!/^\d{10}$/.test(cedula)) return false;
+
+  const province = Number(cedula.slice(0, 2));
+  if (province < 1 || province > 24) return false;
+
+  const thirdDigit = Number(cedula[2]);
+  if (thirdDigit >= 6) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i += 1) {
+    let digit = Number(cedula[i]);
+    if (i % 2 === 0) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
   }
 
-  &-inner {
-    background-color: #fff;
-    color: #000;
-    position: relative;
-    widows: 60%;
-    padding: 40px;
-    border-radius: 8px;
-    box-shadow: 0 5px 5px #000;
-    transition: all 250ms ease-in-out;
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return checkDigit === Number(cedula[9]);
+};
+
+const trimmedIdentification = computed(() => digitsOnly(form.identification));
+const trimmedFullName = computed(() => form.fullName.trim());
+const trimmedEmail = computed(() => form.email.trim());
+const trimmedPhone = computed(() => digitsOnly(form.phone));
+
+const identificationStatus = computed<ValidationStatus>(() => {
+  if (!trimmedIdentification.value) return "pending";
+  return isValidEcuadorCedula(trimmedIdentification.value) ? "valid" : "invalid";
+});
+const fullNameStatus = computed<ValidationStatus>(() => {
+  if (!trimmedFullName.value) return "pending";
+  return trimmedFullName.value.length >= 3 ? "valid" : "invalid";
+});
+const emailStatus = computed<ValidationStatus>(() => {
+  if (!trimmedEmail.value) return "pending";
+  return emailRegex.test(trimmedEmail.value) ? "valid" : "invalid";
+});
+const phoneStatus = computed<ValidationStatus>(() => {
+  if (!trimmedPhone.value) return "pending";
+  return trimmedPhone.value.length >= 10 ? "valid" : "invalid";
+});
+
+const identificationMessage = computed(() => {
+  if (identificationStatus.value === "pending") return "Ingrese cedula ecuatoriana de 10 digitos.";
+  if (identificationStatus.value === "invalid") return "Cedula invalida para Ecuador.";
+  return "Cedula valida.";
+});
+const fullNameMessage = computed(() => {
+  if (fullNameStatus.value === "pending") return "Ingrese nombre completo.";
+  if (fullNameStatus.value === "invalid") return "El nombre debe tener al menos 3 caracteres.";
+  return "Nombre valido.";
+});
+const emailMessage = computed(() => {
+  if (emailStatus.value === "pending") return "Puede dejarlo vacio o ingresar un email valido.";
+  if (emailStatus.value === "invalid") return "Formato de email invalido.";
+  return "Email valido.";
+});
+const phoneMessage = computed(() => {
+  if (phoneStatus.value === "pending") return "Puede dejarlo vacio o ingresar telefono.";
+  if (phoneStatus.value === "invalid") return "El telefono debe tener al menos 10 digitos.";
+  return "Telefono valido.";
+});
+
+const isFormValid = computed(
+  () =>
+    identificationStatus.value === "valid" &&
+    fullNameStatus.value === "valid" &&
+    (emailStatus.value === "valid" || emailStatus.value === "pending") &&
+    (phoneStatus.value === "valid" || phoneStatus.value === "pending")
+);
+
+const statusIcon = (status: ValidationStatus) => {
+  if (status === "valid") return "circle-check";
+  if (status === "invalid") return "circle-xmark";
+  return "clock";
+};
+
+const resetForm = () => {
+  form.identification = "";
+  form.fullName = "";
+  form.email = "";
+  form.phone = "";
+  modalErrorMessage.value = "";
+};
+
+const openCreateModal = () => {
+  if (!canMutateCustomer.value) return;
+  editMode.value = false;
+  editingCustomerId.value = null;
+  resetForm();
+  showModal.value = true;
+};
+
+const openEditModal = (customer: Customer) => {
+  if (!canMutateCustomer.value) return;
+  editMode.value = true;
+  editingCustomerId.value = customer.id;
+  form.identification = customer.identification;
+  form.fullName = customer.fullName ?? "";
+  form.email = customer.email ?? "";
+  form.phone = customer.phone ?? "";
+  modalErrorMessage.value = "";
+  showModal.value = true;
+};
+
+const closeModal = () => {
+  showModal.value = false;
+  editMode.value = false;
+  editingCustomerId.value = null;
+  resetForm();
+};
+
+const fetchCustomers = async () => {
+  const { data } = await httpClient.get<Customer[]>("/customers");
+  customers.value = data;
+};
+
+const saveCustomer = async () => {
+  if (!canMutateCustomer.value || !isFormValid.value) return;
+
+  saving.value = true;
+  modalErrorMessage.value = "";
+  successMessage.value = "";
+  errorMessage.value = "";
+
+  try {
+    const payload = {
+      identification: trimmedIdentification.value,
+      fullName: trimmedFullName.value,
+      email: trimmedEmail.value || undefined,
+      phone: trimmedPhone.value || undefined,
+    };
+
+    if (editMode.value && editingCustomerId.value) {
+      const { data } = await httpClient.put<Customer>(`/customers/${editingCustomerId.value}`, payload);
+      customers.value = customers.value.map((customer) =>
+        customer.id === data.id ? data : customer
+      );
+      successMessage.value = "Cliente actualizado correctamente.";
+    } else {
+      const { data } = await httpClient.post<Customer>("/customers", payload);
+      customers.value = [data, ...customers.value];
+      successMessage.value = "Cliente creado correctamente.";
+    }
+
+    closeModal();
+  } catch (error) {
+    if (isAxiosError(error)) {
+      modalErrorMessage.value =
+        (error.response?.data as { message?: string } | undefined)?.message ||
+        "No se pudo guardar el cliente.";
+    } else {
+      modalErrorMessage.value = "No se pudo guardar el cliente.";
+    }
+  } finally {
+    saving.value = false;
+  }
+};
+
+onMounted(async () => {
+  try {
+    await fetchCustomers();
+  } catch {
+    errorMessage.value = "No se pudo cargar la lista de clientes.";
+  }
+});
+</script>
+
+<style scoped>
+.customers-page {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.panel {
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+}
+
+.header-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+h2,
+h3,
+p,
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h2,
+p {
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+input,
+button {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.primary {
+  background: #1e3a5f;
+  color: #fff;
+  border-color: #1e3a5f;
+}
+
+.ghost {
+  background: transparent;
+}
+
+.meta {
+  margin: 8px 0 0;
+  color: #475569;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+th {
+  background: #f8fafc;
+}
+
+.th-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+}
+
+.ok,
+.error {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ok {
+  color: #166534;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal-card {
+  width: min(640px, 100%);
+  background: white;
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.modal-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.icon-only {
+  padding: 8px 10px;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.validation {
+  font-size: 0.8rem;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.validation.pending {
+  color: #64748b;
+}
+
+.validation.valid {
+  color: #166534;
+}
+
+.validation.invalid {
+  color: #b91c1c;
+}
+
+.modal-card footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 920px) {
+  .modal-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

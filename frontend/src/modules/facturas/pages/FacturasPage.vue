@@ -1,16 +1,12 @@
 <template>
   <div class="factura-page">
     <transition name="fade">
-      <ViewFactura
-        v-show="verFactura"
-        @close="ocultar"
-        :numOrder="numOrder"
-        ref="myComponent"
-      />
+      <ViewFactura v-if="showDetail" :invoice-id="selectedInvoiceId" @close="closeDetail" />
     </transition>
 
     <h2>Facturas</h2>
-    <DataTable :data="facturas" :columns="columns" filter-placeholder="Buscar por orden o cliente" />
+    <DataTable :data="facturas" :columns="columns" filter-placeholder="Buscar por numero o cliente" />
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   </div>
 </template>
 
@@ -22,48 +18,71 @@ import ViewFactura from "@/modules/facturas/components/FacturaView.vue";
 import DataTable from "@/shared/table/DataTable.vue";
 import { httpClient } from "@/shared/http/client";
 
-type Factura = {
-  orderID: number;
-  customerID: string;
-  updatedAt: string;
-  cerrada: boolean;
+type InvoiceSummary = {
+  id: number;
+  invoiceNumber: string;
+  issueDate: string;
+  status: "DRAFT" | "PAID" | "CANCELLED";
+  total: number | string;
+  customer: {
+    fullName: string | null;
+    businessName: string | null;
+  };
 };
 
-const facturas = ref<Factura[]>([]);
-const verFactura = ref(false);
-const numOrder = ref(0);
-const myComponent = ref<InstanceType<typeof ViewFactura> | null>(null);
+const facturas = ref<InvoiceSummary[]>([]);
+const showDetail = ref(false);
+const selectedInvoiceId = ref(0);
+const errorMessage = ref("");
+
+const customerLabel = (invoice: InvoiceSummary) =>
+  invoice.customer.fullName || invoice.customer.businessName || "Sin nombre";
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear().toString().slice(2);
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
+  return date.toLocaleString("es-EC");
 };
 
-const abrirFactura = (orderID: number) => {
-  numOrder.value = orderID;
-  verFactura.value = true;
-  myComponent.value?.getDetailsOrder();
+const formatMoney = (value: number | string) =>
+  new Intl.NumberFormat("es-EC", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+
+const openDetail = (invoiceId: number) => {
+  selectedInvoiceId.value = invoiceId;
+  showDetail.value = true;
 };
 
-const columns: ColumnDef<Factura>[] = [
+const closeDetail = () => {
+  showDetail.value = false;
+  selectedInvoiceId.value = 0;
+};
+
+const columns: ColumnDef<InvoiceSummary>[] = [
   {
-    accessorKey: "orderID",
-    header: "Order ID",
+    accessorKey: "invoiceNumber",
+    header: "Factura",
   },
   {
-    accessorKey: "customerID",
+    id: "customer",
     header: "Cliente",
+    cell: ({ row }) => customerLabel(row.original),
   },
   {
-    accessorKey: "updatedAt",
+    accessorKey: "issueDate",
     header: "Fecha",
-    cell: ({ row }) => formatDate(row.original.updatedAt),
+    cell: ({ row }) => formatDate(row.original.issueDate),
+  },
+  {
+    accessorKey: "status",
+    header: "Estado",
+  },
+  {
+    accessorKey: "total",
+    header: "Total",
+    cell: ({ row }) => formatMoney(row.original.total),
   },
   {
     id: "actions",
@@ -74,7 +93,7 @@ const columns: ColumnDef<Factura>[] = [
         {
           size: "sm",
           variant: "outline",
-          onClick: () => abrirFactura(row.original.orderID),
+          onClick: () => openDetail(row.original.id),
         },
         () => "Ver"
       ),
@@ -82,12 +101,12 @@ const columns: ColumnDef<Factura>[] = [
 ];
 
 const getFacturas = async () => {
-  const { data } = await httpClient.get<Factura[]>("/orders");
-  facturas.value = data.filter((item) => item.cerrada);
-};
-
-const ocultar = () => {
-  verFactura.value = false;
+  try {
+    const { data } = await httpClient.get<InvoiceSummary[]>("/invoices");
+    facturas.value = data;
+  } catch {
+    errorMessage.value = "No se pudo cargar la lista de facturas.";
+  }
 };
 
 onMounted(() => {
@@ -99,6 +118,10 @@ onMounted(() => {
 .factura-page {
   display: grid;
   gap: 16px;
-  padding: 20px;
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
 }
 </style>

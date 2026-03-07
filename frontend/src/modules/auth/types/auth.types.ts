@@ -1,12 +1,13 @@
-export type UserRole = "admin" | "cashier";
+export type UserRole = "admin" | "empleado" | "lector";
 
 export type AuthUser = {
-  id: string;
-  username: string;
+  id: number;
+  name: string;
+  email: string;
   roles: UserRole[];
 };
 
 export type LoginPayload = {
-  username: string;
+  email: string;
   password: string;
 };

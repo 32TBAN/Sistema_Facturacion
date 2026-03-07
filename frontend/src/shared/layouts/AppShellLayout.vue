@@ -5,17 +5,9 @@
         <img src="../../assets/carrito.png" alt="logo" width="26" height="26" />
         <div v-if="!isCollapsed" class="brand-copy">
           <strong>FluxFact</strong>
-          <small>Billing SaaS</small>
+          <small>Demo</small>
         </div>
       </div>
-
-      <button class="collapse-btn" @click="toggleCollapse" aria-label="colapsar menu">
-        {{ isCollapsed ? ">" : "<" }}
-      </button>
-
-      <button class="quick-action" @click="goPrimaryAction">
-        {{ primaryActionLabel }}
-      </button>
 
       <nav class="sidebar-nav">
         <router-link
@@ -24,16 +16,20 @@
           class="nav-item"
           :to="item.to"
           :class="{ active: isRouteActive(item.to) }"
+          :title="item.label"
           @click="mobileOpen = false"
         >
-          <span class="dot" />
-          <span v-if="!isCollapsed">{{ item.label }}</span>
+          <font-awesome-icon class="nav-icon" :icon="['fas', item.icon]" />
+          <span v-if="!isCollapsed" class="nav-label">{{ item.label }}</span>
         </router-link>
       </nav>
 
       <div class="sidebar-footer">
         <p v-if="!isCollapsed">Sesion activa</p>
-        <button class="logout-btn" @click="logout">Cerrar sesion</button>
+        <button class="logout-btn" :title="'Cerrar sesion'" @click="logout">
+          <font-awesome-icon :icon="['fas', 'right-from-bracket']" />
+          <span v-if="!isCollapsed">Cerrar sesion</span>
+        </button>
       </div>
     </aside>
 
@@ -41,7 +37,9 @@
 
     <section class="shell-main">
       <header class="topbar">
-        <button class="mobile-menu" @click="mobileOpen = !mobileOpen">Menu</button>
+        <button class="sidebar-trigger" aria-label="Alternar menu lateral" @click="toggleSidebar">
+          <font-awesome-icon :icon="['fas', 'bars']" />
+        </button>
         <div class="turn-bar">
           <span>{{ roleLabel }}</span>
           <span class="separator">|</span>
@@ -67,7 +65,8 @@ type NavItem = {
   name: string;
   label: string;
   to: string;
-  roles: Array<"admin" | "cashier">;
+  icon: string;
+  roles: Array<"admin" | "empleado" | "lector">;
 };
 
 const STORAGE_KEY = "sf_sidebar_collapsed";
@@ -79,27 +78,53 @@ const mobileOpen = ref(false);
 const isCollapsed = ref(localStorage.getItem(STORAGE_KEY) === "1");
 
 const navItems: NavItem[] = [
-  { name: "dashboard", label: "Dashboard", to: "/dashboard", roles: ["admin"] },
-  { name: "inicio", label: "Nueva factura", to: "/inicio", roles: ["admin", "cashier"] },
-  { name: "productsSearch", label: "Productos", to: "/productsSearch", roles: ["admin", "cashier"] },
-  { name: "clientsSearch", label: "Clientes", to: "/clientsSearch", roles: ["admin", "cashier"] },
-  { name: "facturas", label: "Facturas", to: "/facturas", roles: ["admin"] },
+  { name: "dashboard", label: "Dashboard", to: "/dashboard", icon: "gauge", roles: ["admin"] },
+  { name: "inicio", label: "Nueva factura", to: "/inicio", icon: "receipt", roles: ["admin", "empleado"] },
+  {
+    name: "productsSearch",
+    label: "Productos",
+    to: "/productsSearch",
+    icon: "box-open",
+    roles: ["admin", "empleado", "lector"],
+  },
+  {
+    name: "clientsSearch",
+    label: "Clientes",
+    to: "/clientsSearch",
+    icon: "users",
+    roles: ["admin", "empleado", "lector"],
+  },
+  {
+    name: "facturas",
+    label: "Facturas",
+    to: "/facturas",
+    icon: "file-invoice",
+    roles: ["admin", "empleado", "lector"],
+  },
 ];
 
 const visibleItems = computed(() =>
   navItems.filter((item) => item.roles.some((role) => authStore.roles.includes(role)))
 );
 
-const roleLabel = computed(() => (authStore.roles.includes("admin") ? "Administrador" : "Cajero"));
-const primaryActionLabel = computed(() => (authStore.roles.includes("admin") ? "Ver indicadores" : "Nueva factura"));
+const roleLabel = computed(() => {
+  if (authStore.roles.includes("admin")) return "Administrador";
+  if (authStore.roles.includes("empleado")) return "Empleado";
+  if (authStore.roles.includes("lector")) return "Lector";
+  return "Sin rol";
+});
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
   localStorage.setItem(STORAGE_KEY, isCollapsed.value ? "1" : "0");
 };
 
-const goPrimaryAction = async () => {
-  await router.push(authStore.roles.includes("admin") ? "/dashboard" : "/inicio");
+const toggleSidebar = () => {
+  if (window.innerWidth <= 900) {
+    mobileOpen.value = !mobileOpen.value;
+    return;
+  }
+  toggleCollapse();
 };
 
 const logout = async () => {
@@ -129,7 +154,7 @@ const isRouteActive = (to: string) => route.path === to;
   border-right: 1px solid #dbe2ea;
   padding: 18px 12px;
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   gap: 14px;
 }
 
@@ -148,21 +173,13 @@ const isRouteActive = (to: string) => route.path === to;
   color: #64748b;
 }
 
-.collapse-btn,
-.quick-action,
 .logout-btn,
-.mobile-menu {
+.sidebar-trigger {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   background: white;
   padding: 8px 10px;
   cursor: pointer;
-}
-
-.quick-action {
-  background: #1e3a5f;
-  color: white;
-  border-color: #1e3a5f;
 }
 
 .sidebar-nav {
@@ -182,16 +199,18 @@ const isRouteActive = (to: string) => route.path === to;
   padding: 10px;
 }
 
+.nav-icon {
+  font-size: 0.95rem;
+  min-width: 14px;
+}
+
+.nav-label {
+  white-space: nowrap;
+}
+
 .nav-item.active {
   border-color: #bcd0e9;
   background: #eaf2fc;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #4b5563;
 }
 
 .sidebar-footer {
@@ -202,6 +221,13 @@ const isRouteActive = (to: string) => route.path === to;
 .sidebar-footer p {
   margin: 0;
   color: #475569;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
 }
 
 .shell-main {
@@ -217,6 +243,14 @@ const isRouteActive = (to: string) => route.path === to;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
+}
+
+.sidebar-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
 }
 
 .turn-bar {
@@ -240,10 +274,6 @@ const isRouteActive = (to: string) => route.path === to;
   padding: 18px;
 }
 
-.mobile-menu {
-  display: none;
-}
-
 .sidebar-overlay {
   display: none;
 }
@@ -252,10 +282,6 @@ const isRouteActive = (to: string) => route.path === to;
   .app-shell,
   .app-shell.collapsed {
     grid-template-columns: 1fr;
-  }
-
-  .mobile-menu {
-    display: inline-flex;
   }
 
   .sidebar {
