@@ -1,17 +1,17 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router/index'
-import { library } from '@fortawesome/fontawesome-svg-core'
-import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import axios from 'axios' 
-import VueAxios from 'vue-axios'
-import { fas } from '@fortawesome/free-solid-svg-icons'
+import { createApp } from "vue";
+import { library } from "@fortawesome/fontawesome-svg-core";
+import { faChevronDown, faChevronUp, fas } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import App from "./App.vue";
+import router from "./app/router/index";
+import { installAxios } from "./app/providers/axios";
+import "./app/styles/main.css";
 
-library.add(faChevronDown, faChevronUp, fas)
+library.add(faChevronDown, faChevronUp, fas);
 
-const app = createApp(App).component('font-awesome-icon', FontAwesomeIcon)
+const app = createApp(App).component("font-awesome-icon", FontAwesomeIcon);
 
-app.use(router) 
-app.use(VueAxios, axios)
-app.mount('#app')
+app.use(router);
+installAxios(app);
+app.mount("#app");
+
