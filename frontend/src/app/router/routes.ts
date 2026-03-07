@@ -23,7 +23,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/inicio",
     name: "inicio",
-    component: () => import("@/modules/productos/pages/ProductosPage.vue"),
+    component: () => import("@/modules/productos/pages/NuevaFacturaPage.vue"),
     meta: {
       requiresAuth: true,
       roles: ["admin", "empleado"],
