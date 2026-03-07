@@ -1,28 +1,18 @@
 <template>
-  <div id="app">
-    <AppHeader />
+  <component :is="layoutComponent">
     <router-view />
-  </div>
+  </component>
 </template>
 
-<script>
-import AppHeader from "@/shared/components/AppHeader.vue";
+<script setup lang="ts">
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import AuthLayout from "@/shared/layouts/AuthLayout.vue";
+import AppShellLayout from "@/shared/layouts/AppShellLayout.vue";
 
-export default {
-  components: {
-    AppHeader,
-  },
-};
+const route = useRoute();
+
+const layoutComponent = computed(() =>
+  route.meta.layout === "app" ? AppShellLayout : AuthLayout
+);
 </script>
-
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  background-color: #f1f5f9;
-  min-height: 100vh;
-}
-</style>
