@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PAID
+  CANCELLED
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  isActive      Boolean        @default(true) @map("is_active")
+  roleId        Int            @map("role_id")
+  role          Role           @relation(fields: [roleId], references: [id])
+  invoices      Invoice[]
+  movements     InventoryMovement[]
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Customer {
+  id             Int       @id @default(autoincrement())
+  fullName       String?   @map("full_name")
+  businessName   String?   @map("business_name")
+  identification String    @unique
+  email          String?
+  phone          String?
+  address        String?
+  invoices       Invoice[]
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("customers")
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model Product {
+  id          Int                 @id @default(autoincrement())
+  categoryId  Int                 @map("category_id")
+  category    Category            @relation(fields: [categoryId], references: [id])
+  sku         String              @unique
+  name        String
+  description String?
+  price       Decimal             @db.Decimal(10, 2)
+  stock       Int                 @default(0)
+  isActive    Boolean             @default(true) @map("is_active")
+  items       InvoiceItem[]
+  movements   InventoryMovement[]
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([categoryId])
+  @@map("products")
+}
+
+model Invoice {
+  id          Int                 @id @default(autoincrement())
+  invoiceNumber String            @unique @map("invoice_number")
+  customerId  Int                 @map("customer_id")
+  customer    Customer            @relation(fields: [customerId], references: [id])
+  userId      Int                 @map("user_id")
+  user        User                @relation(fields: [userId], references: [id])
+  issueDate   DateTime            @map("issue_date")
+  subtotal    Decimal             @db.Decimal(10, 2)
+  tax         Decimal             @db.Decimal(10, 2)
+  total       Decimal             @db.Decimal(10, 2)
+  status      InvoiceStatus       @default(DRAFT)
+  items       InvoiceItem[]
+  movements   InventoryMovement[]
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([userId])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int      @map("invoice_id")
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId Int      @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2) @map("unit_price")
+  subtotal  Decimal  @db.Decimal(10, 2)
+  tax       Decimal  @db.Decimal(10, 2)
+  total     Decimal  @db.Decimal(10, 2)
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@map("invoice_items")
+}
+
+model InventoryMovement {
+  id        Int          @id @default(autoincrement())
+  productId Int          @map("product_id")
+  product   Product      @relation(fields: [productId], references: [id])
+  userId    Int          @map("user_id")
+  user      User         @relation(fields: [userId], references: [id])
+  type      MovementType
+  quantity  Int
+  reference String?
+  reason    String?
+  invoiceId Int?         @map("invoice_id")
+  invoice   Invoice?     @relation(fields: [invoiceId], references: [id])
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([productId])
+  @@index([userId])
+  @@index([invoiceId])
+  @@map("inventory_movements")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
