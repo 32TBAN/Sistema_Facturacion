@@ -20,7 +20,7 @@
     </transition>
 
     <transition name="fade">
-      <pop-up
+      <BaseModal
         :total="total"
         v-show="popup"
         @close="toglePopUP()"
@@ -108,13 +108,13 @@
 </template>
 
 <script>
-import PopUp from "./PopUp.vue";
-import BusquedaProducto from "./ProductsSearch.vue";
-import BusquedaClientes from "./ClienetsList.vue";
+import BaseModal from "@/shared/components/BaseModal.vue";
+import BusquedaProducto from "@/modules/productos/components/ProductsSearch.vue";
+import BusquedaClientes from "@/modules/clientes/components/ClientsList.vue";
 
 export default {
   components: {
-    PopUp,
+    BaseModal,
     BusquedaProducto,
     BusquedaClientes,
   },
@@ -332,3 +332,4 @@ export default {
   border-radius: 15px; /* Ajusta el valor según tus preferencias */
 }
 </style>
+

@@ -60,7 +60,7 @@
 </template>
 
 <script>
-import ViewFactura from "./ViewFactura.vue";
+import ViewFactura from "@/modules/facturas/components/FacturaView.vue";
 export default {
   components: {
     ViewFactura,
@@ -140,3 +140,4 @@ export default {
 </script>
 
 <style></style>
+
