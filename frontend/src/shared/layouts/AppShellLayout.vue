@@ -78,7 +78,7 @@ const mobileOpen = ref(false);
 const isCollapsed = ref(localStorage.getItem(STORAGE_KEY) === "1");
 
 const navItems: NavItem[] = [
-  { name: "dashboard", label: "Dashboard", to: "/dashboard", icon: "gauge", roles: ["admin"] },
+  { name: "dashboard", label: "Dashboard", to: "/dashboard", icon: "gauge", roles: ["admin", "empleado"] },
   { name: "inicio", label: "Nueva factura", to: "/inicio", icon: "receipt", roles: ["admin", "empleado"] },
   {
     name: "productsSearch",
@@ -100,6 +100,13 @@ const navItems: NavItem[] = [
     to: "/facturas",
     icon: "file-invoice",
     roles: ["admin", "empleado", "lector"],
+  },
+  {
+    name: "inventoryMovements",
+    label: "Movimientos",
+    to: "/inventory-movements",
+    icon: "arrows-rotate",
+    roles: ["admin"],
   },
 ];
 

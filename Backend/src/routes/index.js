@@ -6,6 +6,7 @@ import categoriesRoutes from "../modules/categories/categories.routes";
 import productsRoutes from "../modules/products/products.routes";
 import invoicesRoutes from "../modules/invoices/invoices.routes";
 import inventoryRoutes from "../modules/inventory/inventory.routes";
+import dashboardRoutes from "./dashboard.routes";
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use("/categories", categoriesRoutes);
 router.use("/products", productsRoutes);
 router.use("/invoices", invoicesRoutes);
 router.use("/inventory-movements", inventoryRoutes);
+router.use("/dashboard", dashboardRoutes);
 
 export default router;
