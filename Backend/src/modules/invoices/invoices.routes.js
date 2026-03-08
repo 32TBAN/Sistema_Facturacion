@@ -68,25 +68,60 @@ router.post(
     const { customerId, items, issueDate } = req.body;
     const userId = req.auth.userId;
 
-    const created = await prisma.$transaction(async (tx) => {
-      const customer = await tx.customer.findUnique({ where: { id: customerId } });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      throw new HttpError(400, "Invoice must include at least one item");
+    }
+
+    const createdInvoiceId = await prisma.$transaction(async (tx) => {
+      const customer = await tx.customer.findUnique({
+        where: { id: customerId },
+      });
+
       if (!customer) {
         throw new HttpError(400, "Invalid customer");
       }
 
-      const productIds = [...new Set(items.map((item) => item.productId))];
-      const products = await tx.product.findMany({ where: { id: { in: productIds } } });
-      const productMap = new Map(products.map((p) => [p.id, p]));
+      const groupedItemsMap = new Map();
+
+      for (const item of items) {
+        if (!item.productId || !item.quantity || item.quantity <= 0) {
+          throw new HttpError(400, "Invalid invoice items");
+        }
+
+        const existing = groupedItemsMap.get(item.productId);
+
+        if (existing) {
+          existing.quantity += item.quantity;
+        } else {
+          groupedItemsMap.set(item.productId, {
+            productId: item.productId,
+            quantity: item.quantity,
+          });
+        }
+      }
+
+      const groupedItems = Array.from(groupedItemsMap.values());
+      const productIds = groupedItems.map((item) => item.productId);
+
+      const products = await tx.product.findMany({
+        where: {
+          id: { in: productIds },
+        },
+      });
 
       if (products.length !== productIds.length) {
         throw new HttpError(400, "Some products are invalid");
       }
 
-      const itemRows = items.map((item) => {
+      const productMap = new Map(products.map((p) => [p.id, p]));
+
+      const itemRows = groupedItems.map((item) => {
         const product = productMap.get(item.productId);
+
         if (!product || !product.isActive) {
           throw new HttpError(400, `Product ${item.productId} is not available`);
         }
+
         if (product.stock < item.quantity) {
           throw new HttpError(400, `Insufficient stock for ${product.name}`);
         }
@@ -109,7 +144,9 @@ router.post(
       const subtotal = roundMoney(
         itemRows.reduce((acc, row) => acc + row.subtotal, 0)
       );
-      const tax = roundMoney(itemRows.reduce((acc, row) => acc + row.tax, 0));
+      const tax = roundMoney(
+        itemRows.reduce((acc, row) => acc + row.tax, 0)
+      );
       const total = roundMoney(subtotal + tax);
 
       const invoice = await tx.invoice.create({
@@ -122,47 +159,71 @@ router.post(
           tax,
           total,
           status: "DRAFT",
-          items: {
-            create: itemRows.map((row) => ({
-              productId: row.productId,
-              quantity: row.quantity,
-              unitPrice: row.unitPrice,
-              subtotal: row.subtotal,
-              tax: row.tax,
-              total: row.total,
-            })),
-          },
         },
-        include: { items: true },
+      });
+
+      await tx.invoiceItem.createMany({
+        data: itemRows.map((row) => ({
+          invoiceId: invoice.id,
+          productId: row.productId,
+          quantity: row.quantity,
+          unitPrice: row.unitPrice,
+          subtotal: row.subtotal,
+          tax: row.tax,
+          total: row.total,
+        })),
       });
 
       for (const row of itemRows) {
-        await tx.product.update({
-          where: { id: row.productId },
-          data: { stock: { decrement: row.quantity } },
-        });
-        await tx.inventoryMovement.create({
+        const updated = await tx.product.updateMany({
+          where: {
+            id: row.productId,
+            stock: {
+              gte: row.quantity,
+            },
+          },
           data: {
-            productId: row.productId,
-            userId,
-            type: "OUT",
-            quantity: row.quantity,
-            reference: invoice.invoiceNumber,
-            reason: "Invoice issue",
-            invoiceId: invoice.id,
+            stock: {
+              decrement: row.quantity,
+            },
           },
         });
+
+        if (updated.count === 0) {
+          throw new HttpError(
+            400,
+            `Insufficient stock while processing product ${row.productId}`
+          );
+        }
       }
 
-      return tx.invoice.findUnique({
-        where: { id: invoice.id },
-        include: {
-          customer: true,
-          user: { include: { role: true } },
-          items: { include: { product: true } },
-        },
+      await tx.inventoryMovement.createMany({
+        data: itemRows.map((row) => ({
+          productId: row.productId,
+          userId,
+          type: "OUT",
+          quantity: row.quantity,
+          reference: invoice.invoiceNumber,
+          reason: "Invoice issue",
+          invoiceId: invoice.id,
+        })),
       });
+
+      return invoice.id;
     });
+
+    const created = await prisma.invoice.findUnique({
+      where: { id: createdInvoiceId },
+      include: {
+        customer: true,
+        user: { include: { role: true } },
+        items: { include: { product: true } },
+      },
+    });
+
+    if (!created) {
+      throw new HttpError(500, "Invoice creation failed");
+    }
 
     res.status(201).json(created);
   })

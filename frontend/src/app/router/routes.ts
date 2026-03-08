@@ -16,7 +16,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/modules/dashboard/pages/AdminDashboardPage.vue"),
     meta: {
       requiresAuth: true,
-      roles: ["admin"],
+      roles: ["admin", "empleado"],
       layout: "app",
     },
   },
@@ -57,6 +57,26 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       roles: ["admin", "empleado", "lector"],
+      layout: "app",
+    },
+  },
+  {
+    path: "/inventory-movements",
+    name: "inventoryMovements",
+    component: () => import("@/modules/productos/pages/InventoryMovementsPage.vue"),
+    meta: {
+      requiresAuth: true,
+      roles: ["admin"],
+      layout: "app",
+    },
+  },
+  {
+    path: "/users",
+    name: "users",
+    component: () => import("@/modules/clientes/pages/UsersPage.vue"),
+    meta: {
+      requiresAuth: true,
+      roles: ["admin"],
       layout: "app",
     },
   },

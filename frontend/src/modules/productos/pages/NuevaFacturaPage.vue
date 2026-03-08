@@ -93,9 +93,9 @@
         <article v-for="product in filteredProducts.slice(0, 12)" :key="product.id" class="product-card">
           <div>
             <strong>{{ product.name }}</strong>
-            <p>
+            <p :title="product.sku">
               <font-awesome-icon :icon="['fas', 'barcode']" />
-              SKU: {{ product.sku }}
+              <span class="sku-text">SKU: {{ product.sku }}</span>
             </p>
             <p>
               <font-awesome-icon :icon="['fas', 'dollar-sign']" />
@@ -119,49 +119,75 @@
         <font-awesome-icon :icon="['fas', 'list-check']" />
         Detalle de factura
       </h2>
-      <table>
-        <thead>
-          <tr>
-            <th><font-awesome-icon :icon="['fas', 'box']" /> Producto</th>
-            <th><font-awesome-icon :icon="['fas', 'hashtag']" /> Cantidad</th>
-            <th><font-awesome-icon :icon="['fas', 'dollar-sign']" /> Precio</th>
-            <th><font-awesome-icon :icon="['fas', 'calculator']" /> Total</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in cart" :key="item.productId">
-            <td>{{ item.name }}</td>
-            <td>
-              <input
-                class="quantity-input"
-                :value="item.quantity"
-                type="number"
-                min="1"
-                :max="item.maxStock"
-                @input="updateQuantity(item.productId, $event)"
-              />
-            </td>
-            <td>{{ formatMoney(item.unitPrice) }}</td>
-            <td>{{ formatMoney(item.unitPrice * item.quantity) }}</td>
-            <td>
-              <button class="ghost danger" @click="removeItem(item.productId)">
-                <font-awesome-icon :icon="['fas', 'trash']" />
-                Quitar
-              </button>
-            </td>
-          </tr>
-          <tr v-if="cart.length === 0">
-            <td colspan="5" class="empty">No hay productos agregados</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><font-awesome-icon :icon="['fas', 'box']" /> Producto</th>
+              <th><font-awesome-icon :icon="['fas', 'hashtag']" /> Cantidad</th>
+              <th><font-awesome-icon :icon="['fas', 'dollar-sign']" /> P. Unitario</th>
+              <th><font-awesome-icon :icon="['fas', 'calculator']" /> Subtotal</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in cart"
+              :key="item.productId"
+              :class="{ 'row-added': recentlyAddedProductId === item.productId }"
+            >
+              <td>{{ item.name }}</td>
+              <td>
+                <input
+                  class="quantity-input"
+                  :value="item.quantity"
+                  type="number"
+                  min="1"
+                  :max="item.maxStock"
+                  @input="updateQuantity(item.productId, $event)"
+                />
+              </td>
+              <td>{{ formatMoney(item.unitPrice) }}</td>
+              <td>{{ formatMoney(item.unitPrice * item.quantity) }}</td>
+              <td>
+                <button class="ghost danger" @click="removeItem(item.productId)">
+                  <font-awesome-icon :icon="['fas', 'trash']" />
+                  Quitar
+                </button>
+              </td>
+            </tr>
+            <tr v-if="cart.length === 0">
+              <td colspan="5" class="empty">No hay productos agregados</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-      <div class="summary">
-        <strong>
-          <font-awesome-icon :icon="['fas', 'receipt']" />
-          Total estimado: {{ formatMoney(totalAmount) }}
-        </strong>
+      <div class="summary-breakdown">
+        <div class="summary-row">
+          <span>
+            <font-awesome-icon :icon="['fas', 'receipt']" />
+            Subtotal
+          </span>
+          <strong>{{ formatMoney(subtotalAmount) }}</strong>
+        </div>
+        <div class="summary-row">
+          <span>
+            <font-awesome-icon :icon="['fas', 'percent']" />
+            Tax 15%
+          </span>
+          <strong>{{ formatMoney(taxAmount) }}</strong>
+        </div>
+        <div class="summary-row total">
+          <span>
+            <font-awesome-icon :icon="['fas', 'file-invoice-dollar']" />
+            Total
+          </span>
+          <strong>{{ formatMoney(totalAmount) }}</strong>
+        </div>
+      </div>
+
+      <div class="summary-actions">
         <button :disabled="!canCreateInvoice" @click="createInvoice">
           <font-awesome-icon :icon="['fas', 'paper-plane']" />
           {{ creating ? "Emitiendo..." : "Emitir factura" }}
@@ -177,6 +203,78 @@
         {{ errorMessage }}
       </p>
     </section>
+
+    <div v-if="showInvoiceSummary" class="modal-backdrop" @click.self="closeInvoiceSummary">
+      <section class="modal-card summary-card">
+        <header>
+          <h3>
+            <font-awesome-icon :icon="['fas', 'file-invoice-dollar']" />
+            Resumen de factura
+          </h3>
+          <button class="ghost icon-only" @click="closeInvoiceSummary" aria-label="Cerrar">
+            <font-awesome-icon :icon="['fas', 'xmark']" />
+          </button>
+        </header>
+
+        <div v-if="invoiceSummary" class="summary-content">
+          <p><strong>Factura:</strong> {{ invoiceSummary.invoiceNumber }}</p>
+          <p><strong>Cliente:</strong> {{ invoiceSummary.customerName }}</p>
+          <p><strong>Identificacion:</strong> {{ invoiceSummary.customerIdentification }}</p>
+
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>P. Unitario</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in invoiceSummary.items" :key="item.productId">
+                <td>{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ formatMoney(item.unitPrice) }}</td>
+                <td>{{ formatMoney(item.unitPrice * item.quantity) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="summary-breakdown compact">
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <strong>{{ formatMoney(invoiceSummary.subtotal) }}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Tax 15%</span>
+              <strong>{{ formatMoney(invoiceSummary.tax) }}</strong>
+            </div>
+            <div class="summary-row total">
+              <span>Total</span>
+              <strong>{{ formatMoney(invoiceSummary.total) }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <footer>
+          <button class="ghost" @click="printInvoiceSummary">
+            <font-awesome-icon :icon="['fas', 'print']" />
+            Imprimir 80mm
+          </button>
+          <button class="primary" @click="closeInvoiceSummary">
+            <font-awesome-icon :icon="['fas', 'check']" />
+            Cerrar
+          </button>
+        </footer>
+      </section>
+    </div>
+
+    <transition name="toast-fade">
+      <div v-if="addToastVisible" class="add-toast" role="status" aria-live="polite">
+        <font-awesome-icon :icon="['fas', 'cart-plus']" />
+        {{ addToastMessage }}
+      </div>
+    </transition>
 
     <div v-if="showCustomerModal" class="modal-backdrop" @click.self="closeCustomerModal">
       <section class="modal-card">
@@ -265,6 +363,8 @@ import { computed, onMounted, ref } from "vue";
 import { isAxiosError } from "axios";
 import { httpClient } from "@/shared/http/client";
 
+const ECUADOR_TAX_RATE = 0.15;
+
 type Product = {
   id: number;
   sku: string;
@@ -295,6 +395,16 @@ type CreatedInvoice = {
   invoiceNumber: string;
 };
 
+type InvoiceSummary = {
+  invoiceNumber: string;
+  customerName: string;
+  customerIdentification: string;
+  items: CartItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+};
+
 type ValidationStatus = "pending" | "valid" | "invalid";
 
 const products = ref<Product[]>([]);
@@ -309,6 +419,14 @@ const errorMessage = ref("");
 const showCustomerModal = ref(false);
 const customerErrorMessage = ref("");
 const creatingCustomer = ref(false);
+const showInvoiceSummary = ref(false);
+const invoiceSummary = ref<InvoiceSummary | null>(null);
+const recentlyAddedProductId = ref<number | null>(null);
+const addToastVisible = ref(false);
+const addToastMessage = ref("");
+let highlightTimer: ReturnType<typeof setTimeout> | null = null;
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
 const newCustomer = ref({
   identification: "",
   fullName: "",
@@ -318,6 +436,10 @@ const newCustomer = ref({
 
 const customerDisplayName = (customer: Customer) =>
   customer.fullName || customer.businessName || "Sin nombre";
+
+const selectedCustomer = computed(
+  () => customers.value.find((customer) => customer.id === selectedCustomerId.value) ?? null
+);
 
 const filteredCustomers = computed(() => {
   const term = customerSearch.value.trim().toLowerCase();
@@ -343,7 +465,11 @@ const filteredProducts = computed(() => {
   );
 });
 
-const totalAmount = computed(() => cart.value.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0));
+const subtotalAmount = computed(() =>
+  cart.value.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0)
+);
+const taxAmount = computed(() => subtotalAmount.value * ECUADOR_TAX_RATE);
+const totalAmount = computed(() => subtotalAmount.value + taxAmount.value);
 
 const canCreateInvoice = computed(() => selectedCustomerId.value > 0 && cart.value.length > 0 && !creating.value);
 
@@ -474,6 +600,10 @@ const closeCustomerModal = () => {
   };
 };
 
+const closeInvoiceSummary = () => {
+  showInvoiceSummary.value = false;
+};
+
 const createCustomer = async () => {
   if (!isCustomerFormValid.value) {
     customerErrorMessage.value = "Corrige los campos resaltados antes de guardar.";
@@ -514,16 +644,30 @@ const addProduct = (product: Product) => {
     if (existing.quantity < existing.maxStock) {
       existing.quantity += 1;
     }
-    return;
+  } else {
+    cart.value.push({
+      productId: product.id,
+      name: product.name,
+      unitPrice: Number(product.price),
+      quantity: 1,
+      maxStock: product.stock,
+    });
   }
 
-  cart.value.push({
-    productId: product.id,
-    name: product.name,
-    unitPrice: Number(product.price),
-    quantity: 1,
-    maxStock: product.stock,
-  });
+  recentlyAddedProductId.value = product.id;
+  addToastMessage.value = `${product.name} agregado al detalle`;
+  addToastVisible.value = true;
+
+  if (highlightTimer) clearTimeout(highlightTimer);
+  if (toastTimer) clearTimeout(toastTimer);
+
+  highlightTimer = setTimeout(() => {
+    recentlyAddedProductId.value = null;
+  }, 1100);
+
+  toastTimer = setTimeout(() => {
+    addToastVisible.value = false;
+  }, 1600);
 };
 
 const updateQuantity = (productId: number, event: Event) => {
@@ -549,15 +693,29 @@ const createInvoice = async () => {
   errorMessage.value = "";
 
   try {
+    const currentItems = cart.value.map((item) => ({ ...item }));
+    const currentCustomer = selectedCustomer.value;
     const payload = {
       customerId: selectedCustomerId.value,
-      items: cart.value.map((item) => ({
+      items: currentItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
       })),
     };
 
     const { data } = await httpClient.post<CreatedInvoice>("/invoices", payload);
+
+    invoiceSummary.value = {
+      invoiceNumber: data.invoiceNumber,
+      customerName: currentCustomer ? customerDisplayName(currentCustomer) : "Sin cliente",
+      customerIdentification: currentCustomer?.identification ?? "-",
+      items: currentItems,
+      subtotal: subtotalAmount.value,
+      tax: taxAmount.value,
+      total: totalAmount.value,
+    };
+    showInvoiceSummary.value = true;
+
     successMessage.value = `Factura ${data.invoiceNumber} creada correctamente.`;
     selectedCustomerId.value = 0;
     customerSearch.value = "";
@@ -573,6 +731,79 @@ const createInvoice = async () => {
   } finally {
     creating.value = false;
   }
+};
+
+const printInvoiceSummary = () => {
+  if (!invoiceSummary.value) return;
+  const summary = invoiceSummary.value;
+  const lines = summary.items
+    .map(
+      (item) =>
+        `<tr><td>${item.name}</td><td>${item.quantity}</td><td>${formatMoney(item.unitPrice)}</td><td>${formatMoney(item.unitPrice * item.quantity)}</td></tr>`
+    )
+    .join("");
+
+  const printWindow = window.open("", "_blank", "width=420,height=700");
+  if (!printWindow) {
+    errorMessage.value = "El navegador bloqueo la ventana de impresion.";
+    return;
+  }
+
+  printWindow.onload = () => {
+    printWindow.print();
+    printWindow.close();
+  };
+
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Factura ${summary.invoiceNumber}</title>
+        <style>
+          @page { size: 80mm auto; margin: 4mm; }
+          body { font-family: "Courier New", monospace; font-size: 12px; margin: 0; color: #111; }
+          .ticket { width: 72mm; margin: 0 auto; }
+          h1 { font-size: 13px; margin: 0 0 4px; text-align: center; }
+          p { margin: 2px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+          th, td { text-align: left; padding: 2px 0; vertical-align: top; }
+          th:nth-child(2), th:nth-child(3), th:nth-child(4),
+          td:nth-child(2), td:nth-child(3), td:nth-child(4) { text-align: right; }
+          .sep { border-top: 1px dashed #333; margin: 6px 0; }
+          .totals p { display: flex; justify-content: space-between; }
+          .totals strong { display: flex; justify-content: space-between; }
+        </style>
+      </head>
+      <body>
+        <div class="ticket">
+          <h1>FACTURA</h1>
+          <p>No: ${summary.invoiceNumber}</p>
+          <p>Cliente: ${summary.customerName}</p>
+          <p>ID: ${summary.customerIdentification}</p>
+          <div class="sep"></div>
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cant</th>
+                <th>P.U.</th>
+                <th>Subt.</th>
+              </tr>
+            </thead>
+            <tbody>${lines}</tbody>
+          </table>
+          <div class="sep"></div>
+          <div class="totals">
+            <p><span>Subtotal</span><span>${formatMoney(summary.subtotal)}</span></p>
+            <p><span>Tax 15%</span><span>${formatMoney(summary.tax)}</span></p>
+            <strong><span>Total</span><span>${formatMoney(summary.total)}</span></strong>
+          </div>
+        </div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
 };
 
 onMounted(async () => {
@@ -642,7 +873,7 @@ onMounted(async () => {
 .panel h2,
 .panel h3,
 .field label,
-.summary strong,
+.summary-row span,
 th {
   display: inline-flex;
   gap: 8px;
@@ -735,10 +966,24 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+.sku-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  max-width: 170px;
+}
+
+.table-wrap {
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   margin-top: 10px;
 }
@@ -747,6 +992,12 @@ th,
 td {
   border-bottom: 1px solid #e2e8f0;
   padding: 8px;
+  white-space: nowrap;
+}
+
+.row-added {
+  animation: rowAddedPulse 1.1s ease;
+  background: #ecfdf5;
 }
 
 .quantity-input {
@@ -758,12 +1009,31 @@ td {
   text-align: center;
 }
 
-.summary {
+.summary-breakdown {
   margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.summary-breakdown.compact {
+  margin-top: 8px;
+}
+
+.summary-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.summary-row.total {
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 8px;
+}
+
+.summary-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .ghost {
@@ -801,7 +1071,7 @@ td {
 }
 
 .modal-card {
-  width: min(640px, 100%);
+  width: min(760px, 100%);
   background: white;
   border-radius: 12px;
   padding: 14px;
@@ -813,6 +1083,28 @@ td {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.summary-card {
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.summary-content p {
+  margin: 0;
+}
+
+.summary-table {
+  margin-top: 10px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.summary-table th,
+.summary-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px;
+  white-space: normal;
 }
 
 .icon-only {
@@ -850,10 +1142,51 @@ td {
   gap: 8px;
 }
 
+.primary {
+  background: #1e3a5f;
+  color: #fff;
+  border-color: #1e3a5f;
+}
+
+.add-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 45;
+  background: #052e16;
+  color: #f0fdf4;
+  border: 1px solid #15803d;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.25);
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+@keyframes rowAddedPulse {
+  0% { background: #86efac; }
+  100% { background: #ecfdf5; }
+}
+
 @media (max-width: 920px) {
-  .summary {
-    flex-direction: column;
-    align-items: stretch;
+  .summary-actions {
+    justify-content: stretch;
+  }
+
+  .summary-actions button {
+    width: 100%;
   }
 
   .modal-grid {

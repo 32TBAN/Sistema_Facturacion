@@ -68,6 +68,7 @@
 
       <footer class="login-footer">
         <p>Demo admin: <code>admin@demo.com / Admin1234</code></p>
+        <p>Demo empleado: <code>empleado@example.com / empleado</code></p>
       </footer>
     </div>
   </section>

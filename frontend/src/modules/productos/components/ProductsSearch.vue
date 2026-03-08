@@ -49,7 +49,9 @@
           </thead>
           <tbody>
             <tr v-for="product in filteredProducts" :key="product.id">
-              <td>{{ product.sku }}</td>
+              <td>
+                <span class="sku-cell" :title="product.sku">{{ product.sku }}</span>
+              </td>
               <td>{{ product.name }}</td>
               <td>{{ product.category?.name ?? "-" }}</td>
               <td>{{ money(product.price) }}</td>
@@ -209,7 +211,7 @@
               <font-awesome-icon :icon="['fas', 'align-left']" />
               Descripcion (opcional)
             </label>
-            <textarea id="description" v-model="form.description" rows="3" />
+            <textarea id="description" v-model="form.description" rows="2" />
           </div>
         </div>
 
@@ -629,6 +631,15 @@ th {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.sku-cell {
+  display: inline-block;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .badge {
