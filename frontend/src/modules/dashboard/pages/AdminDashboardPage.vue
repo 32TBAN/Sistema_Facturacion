@@ -58,22 +58,30 @@
     <section v-if="summary" class="charts-grid">
       <article class="panel chart-card">
         <h3><font-awesome-icon :icon="['fas', 'chart-line']" /> Ventas por dia</h3>
-        <Line :data="salesChartData" :options="lineOptions" />
+        <div class="chart-wrap">
+          <Line :data="salesChartData" :options="lineOptions" />
+        </div>
       </article>
 
       <article class="panel chart-card">
         <h3><font-awesome-icon :icon="['fas', 'chart-pie']" /> Estados de factura</h3>
-        <Doughnut :data="statusChartData" :options="doughnutOptions" />
+        <div class="chart-wrap">
+          <Doughnut :data="statusChartData" :options="doughnutOptions" />
+        </div>
       </article>
 
       <article class="panel chart-card">
         <h3><font-awesome-icon :icon="['fas', 'boxes-stacked']" /> Movimientos de inventario</h3>
-        <Bar :data="movementChartData" :options="barOptions" />
+        <div class="chart-wrap">
+          <Bar :data="movementChartData" :options="barOptions" />
+        </div>
       </article>
 
       <article class="panel chart-card">
         <h3><font-awesome-icon :icon="['fas', 'ranking-star']" /> Top productos vendidos</h3>
-        <Bar :data="topProductsChartData" :options="horizontalBarOptions" />
+        <div class="chart-wrap">
+          <Bar :data="topProductsChartData" :options="horizontalBarOptions" />
+        </div>
       </article>
     </section>
 
@@ -432,10 +440,21 @@ onUnmounted(() => {
 }
 
 .chart-card {
-  min-height: 320px;
+  height: 360px;
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 10px;
+}
+
+.chart-wrap {
+  position: relative;
+  height: 300px;
+  min-height: 300px;
+}
+
+.chart-wrap :deep(canvas) {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .chart-card h3,

@@ -26,10 +26,6 @@
 
       <div class="sidebar-footer">
         <p v-if="!isCollapsed">Sesion activa</p>
-        <button class="logout-btn" :title="'Cerrar sesion'" @click="logout">
-          <font-awesome-icon :icon="['fas', 'right-from-bracket']" />
-          <span v-if="!isCollapsed">Cerrar sesion</span>
-        </button>
       </div>
     </aside>
 
@@ -47,6 +43,10 @@
           <span class="separator">|</span>
           <span class="live">Online</span>
         </div>
+        <button class="logout-btn topbar-logout" :title="'Cerrar sesion'" @click="logout">
+          <font-awesome-icon :icon="['fas', 'right-from-bracket']" />
+          <span>Cerrar sesion</span>
+        </button>
       </header>
 
       <main class="shell-content">
@@ -106,6 +106,13 @@ const navItems: NavItem[] = [
     label: "Movimientos",
     to: "/inventory-movements",
     icon: "arrows-rotate",
+    roles: ["admin"],
+  },
+  {
+    name: "users",
+    label: "Usuarios",
+    to: "/users",
+    icon: "users-gear",
     roles: ["admin"],
   },
 ];
@@ -237,6 +244,10 @@ const isRouteActive = (to: string) => route.path === to;
   justify-content: center;
 }
 
+.topbar-logout {
+  padding: 7px 12px;
+}
+
 .shell-main {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -249,7 +260,8 @@ const isRouteActive = (to: string) => route.path === to;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
+  gap: 8px;
 }
 
 .sidebar-trigger {
@@ -266,6 +278,7 @@ const isRouteActive = (to: string) => route.path === to;
   gap: 8px;
   color: #475569;
   font-size: 0.92rem;
+  margin-left: auto;
 }
 
 .live {

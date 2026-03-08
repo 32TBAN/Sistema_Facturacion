@@ -71,6 +71,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/users",
+    name: "users",
+    component: () => import("@/modules/clientes/pages/UsersPage.vue"),
+    meta: {
+      requiresAuth: true,
+      roles: ["admin"],
+      layout: "app",
+    },
+  },
+  {
     path: "/403",
     name: "forbidden",
     component: () => import("@/shared/pages/ForbiddenPage.vue"),
