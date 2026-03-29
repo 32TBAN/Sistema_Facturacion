@@ -32,3 +32,6 @@ coverage
 .cache
 tmp
 *.tmp
+
+.vercel
+.env*.local
